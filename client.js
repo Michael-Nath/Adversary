@@ -1,7 +1,7 @@
 "use strict";
 exports.__esModule = true;
 var Net = require("net");
-var utils = require("./utils");
+var Utils = require("./utils");
 var canonicalize = require("canonicalize");
 var PORT = 18018;
 var host = "localhost";
@@ -17,11 +17,11 @@ client.connect({ port: PORT }, function () {
     client.write(canonicalize(helloMessage));
 });
 client.on("data", function (chunk) {
-    var response = utils.validateMessage(chunk.toString());
-    if (!firstMessageHello && !utils.isValidFirstMessage(response)) {
+    var response = Utils.validateMessage(chunk.toString());
+    if (!firstMessageHello && !Utils.isValidFirstMessage(response)) {
         var errorMessage = {
             type: "error",
-            error: utils.HELLO_ERROR
+            error: Utils.HELLO_ERROR
         };
         client.write(canonicalize(errorMessage));
         client.end();

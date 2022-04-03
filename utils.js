@@ -21,15 +21,11 @@ function isValidFirstMessage(response) {
 }
 exports.isValidFirstMessage = isValidFirstMessage;
 function validateMessage(message) {
-    var json = {
-        valid: false,
-        error: {},
-        data: {}
-    };
+    var json = {};
     try {
-        message = JSON.parse(message);
-        json["data"] = message;
-        if (!exports.ALLOWABLE_TYPES.has(message["type"])) {
+        var parsedMessage = JSON.parse(message);
+        json["data"] = parsedMessage;
+        if (!exports.ALLOWABLE_TYPES.has(parsedMessage["type"])) {
             json["error"] = { type: "error", error: exports.TYPE_ERROR };
             return json;
         }

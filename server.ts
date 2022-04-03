@@ -1,5 +1,13 @@
+/**
+ * @author Michael D. Nath, Kenan Hasanaliyev, Gabriel Greenstein
+ * @email mnath@stanford.edu, kenanhas@stanford.edu, gbg222@stanford.edu
+ * @create date 2022-04-02
+ * @modify date 2022-04-02
+ * @desc [description]
+ */
 import * as Net from "net";
 import * as utils from "./utils";
+import * as types from "./types";
 const canonicalize = require("canonicalize");
 const PORT = 18018;
 
@@ -24,7 +32,7 @@ server.on("connection", function (socket) {
 
 	// Now that a TCP connection has been established, the server can send data to
 	// the client by writing to its socket.
-	const helloMessage = {
+	const helloMessage: types.HelloMessage = {
 		type: "hello",
 		version: "0.8.0",
 		agent: "test agent",
@@ -45,7 +53,7 @@ server.on("connection", function (socket) {
 		} else {
 			// Checks if first message is hello or not
 			if (!firstMessageHello && !utils.isValidFirstMessage(response)) {
-				const errorMessage = {
+				const errorMessage: types.ErrorMessage = {
 					type: "error",
 					error: utils.HELLO_ERROR,
 				};

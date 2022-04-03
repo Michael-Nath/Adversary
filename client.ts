@@ -1,6 +1,7 @@
 // Include Nodejs' net module.
 const Net = require("net");
-import * as utils from "./utils";
+import * as Utils from "./utils";
+import * as Types from "./types"
 const canonicalize = require("canonicalize");
 // The port number and hostname of the server.
 const PORT = 18018;
@@ -15,7 +16,7 @@ client.connect({ port: PORT }, function () {
 	console.log("TCP connection established with the server.");
 
 	// The client can now send data to the server by writing to its socket.
-	const helloMessage = {
+	const helloMessage : Types.HelloMessage = {
 		type: "hello",
 		version: "0.8.0",
 		agent: "Adversary Node",
@@ -27,12 +28,12 @@ client.connect({ port: PORT }, function () {
 
 // The client can also receive data from the server by reading from its socket.
 client.on("data", function (chunk) {
-	const response = utils.validateMessage(chunk.toString());
+	const response : Types.ValidationMessage = Utils.validateMessage(chunk.toString());
 	// Check if first message is hello
-	if (!firstMessageHello && !utils.isValidFirstMessage(response)) {
-		const errorMessage = {
+	if (!firstMessageHello && !Utils.isValidFirstMessage(response)) {
+		const errorMessage : Types.ErrorMessage = {
 			type: "error",
-			error: utils.HELLO_ERROR,
+			error: Utils.HELLO_ERROR,
 		};
 		client.write(canonicalize(errorMessage));
 		client.end();
