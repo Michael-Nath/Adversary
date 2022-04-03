@@ -1,11 +1,14 @@
 import * as Net from "net";
+import * as utils from "./utils";
+const canonicalize = require("canonicalize");
 const PORT = 18018;
-// only two kinds of messages should be allowed - those representing transactions or blocks
-const ALLOWABLE_TYPES: Set<string> = new Set(["transaction", "block"]);
+
+// cononicalize(json) takes in a JSON and returns another JSON
 
 // Use net.createServer() in your code. This is just for illustration purpose.
 // Create a new TCP server.
 const server: Net.Server = new Net.Server();
+
 // The server listens to a socket for a client to make a connection request.
 // Think of a socket as an end point.
 server.listen(PORT, function () {
@@ -21,21 +24,42 @@ server.on("connection", function (socket) {
 
 	// Now that a TCP connection has been established, the server can send data to
 	// the client by writing to its socket.
-	socket.write("Hello, client.\n");
+	const helloMessage = {
+		type: "hello",
+		version: "0.8.0",
+		agent: "test agent",
+	};
+	let firstMessageHello = false;
+
+	// SECOND STEP OF TCP HANDSHAKE - SERVER ACKNOWLEDGES CLIENT'S HELLO
+	socket.write(canonicalize(helloMessage));
 
 	// The server can also receive data from the client by reading from its socket.
 	socket.on("data", function (chunk) {
-		try {
-			const message: JSON = JSON.parse(chunk.toString());
-			if (!ALLOWABLE_TYPES.has(message["type"])) {
-				socket.write("error: invalid message type.\n");
-				socket.destroy();
-			}
-			console.log(`Data received from client: ${JSON.stringify(message)}`);
-		} catch {
-			socket.write("error: invalid message format. \n");
+		const response: {} = utils.validateMessage(chunk.toString());
+		console.log(response);
+		if (!response["valid"]) {
+			// End connection if response is invalid
+			socket.write(canonicalize(response["error"]));
 			socket.destroy();
+		} else {
+			// Checks if first message is hello or not
+			if (!firstMessageHello && !utils.isValidFirstMessage(response)) {
+				const errorMessage = {
+					type: "error",
+					error: utils.HELLO_ERROR,
+				};
+				// End connection if it isn't
+				socket.write(canonicalize(errorMessage));
+				socket.destroy();
+			} else {
+				// Inform future incoming packets that the first message was indeed hello
+				firstMessageHello = true;
+			}
 		}
+		console.log(
+			`Data received from client: ${JSON.stringify(response["data"])}`
+		);
 	});
 
 	// When the client requests to end the TCP connection with the server, the server
