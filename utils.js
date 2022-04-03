@@ -1,14 +1,21 @@
 "use strict";
 exports.__esModule = true;
-exports.validateMessage = exports.isValidFirstMessage = exports.ALLOWABLE_TYPES = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
+exports.validateMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
 exports.HELLO_ERROR = "";
 exports.TYPE_ERROR = "Unsupported message type received\n";
 exports.FORMAT_ERROR = "Invalid message format\n";
+exports.PORT = 18018;
 exports.ALLOWABLE_TYPES = new Set([
     "transaction",
     "block",
     "hello",
     "acknowledgement",
+]);
+exports.BOOTSTRAPPING_PEERS = new Set([
+    "149.28.204.235",
+    "149.28.220.241",
+    "139.162.130.195",
+    "localhost",
 ]);
 function isValidFirstMessage(response) {
     if (response["data"]["type"] == "hello" &&

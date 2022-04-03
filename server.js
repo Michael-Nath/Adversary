@@ -1,12 +1,11 @@
 "use strict";
 exports.__esModule = true;
 var Net = require("net");
-var utils = require("./utils");
+var Utils = require("./utils");
 var canonicalize = require("canonicalize");
-var PORT = 18018;
 var server = new Net.Server();
-server.listen(PORT, function () {
-    console.log("Server listening for connection requests on socket localhost:".concat(PORT, "."));
+server.listen(Utils.PORT, function () {
+    console.log("Server listening for connection requests on socket localhost:".concat(Utils.PORT, "."));
 });
 server.on("connection", function (socket) {
     console.log("A new connection has been established.");
@@ -18,17 +17,17 @@ server.on("connection", function (socket) {
     var firstMessageHello = false;
     socket.write(canonicalize(helloMessage));
     socket.on("data", function (chunk) {
-        var response = utils.validateMessage(chunk.toString());
+        var response = Utils.validateMessage(chunk.toString());
         console.log(response);
         if (!response["valid"]) {
             socket.write(canonicalize(response["error"]));
             socket.destroy();
         }
         else {
-            if (!firstMessageHello && !utils.isValidFirstMessage(response)) {
+            if (!firstMessageHello && !Utils.isValidFirstMessage(response)) {
                 var errorMessage = {
                     type: "error",
-                    error: utils.HELLO_ERROR
+                    error: Utils.HELLO_ERROR
                 };
                 socket.write(canonicalize(errorMessage));
                 socket.destroy();

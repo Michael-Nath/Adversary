@@ -6,10 +6,9 @@
  * @desc [description]
  */
 import * as Net from "net";
-import * as utils from "./utils";
+import * as Utils from "./utils";
 import * as types from "./types";
 const canonicalize = require("canonicalize");
-const PORT = 18018;
 
 // cononicalize(json) takes in a JSON and returns another JSON
 
@@ -19,9 +18,9 @@ const server: Net.Server = new Net.Server();
 
 // The server listens to a socket for a client to make a connection request.
 // Think of a socket as an end point.
-server.listen(PORT, function () {
+server.listen(Utils.PORT, function () {
 	console.log(
-		`Server listening for connection requests on socket localhost:${PORT}.`
+		`Server listening for connection requests on socket localhost:${Utils.PORT}.`
 	);
 });
 
@@ -44,7 +43,7 @@ server.on("connection", function (socket) {
 
 	// The server can also receive data from the client by reading from its socket.
 	socket.on("data", function (chunk) {
-		const response: {} = utils.validateMessage(chunk.toString());
+		const response: {} = Utils.validateMessage(chunk.toString());
 		console.log(response);
 		if (!response["valid"]) {
 			// End connection if response is invalid
@@ -52,10 +51,10 @@ server.on("connection", function (socket) {
 			socket.destroy();
 		} else {
 			// Checks if first message is hello or not
-			if (!firstMessageHello && !utils.isValidFirstMessage(response)) {
+			if (!firstMessageHello && !Utils.isValidFirstMessage(response)) {
 				const errorMessage: types.ErrorMessage = {
 					type: "error",
-					error: utils.HELLO_ERROR,
+					error: Utils.HELLO_ERROR,
 				};
 				// End connection if it isn't
 				socket.write(canonicalize(errorMessage));
