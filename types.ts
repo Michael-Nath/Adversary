@@ -1,3 +1,10 @@
+/**
+ * @author Michael D. Nath, Kenan Hasanaliyev, Gabriel Greenstein
+ * @email mnath@stanford.edu, kenanhas@stanford.edu, gbg222@stanford.edu
+ * @create date 2022-04-02
+ * @modify date 2022-04-02
+ * @desc [description]
+ */
 // TODO:
 // Make data property of ValidationMessage work with JSON
 

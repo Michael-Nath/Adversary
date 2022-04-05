@@ -1,4 +1,14 @@
+/**
+ * @author Michael D. Nath, Kenan Hasanaliyev, Gabriel Greenstein
+ * @email mnath@stanford.edu, kenanhas@stanford.edu, gbg222@stanford.edu
+ * @create date 2022-04-02
+ * @modify date 2022-04-02
+ * @desc [description]
+ */
 import * as Types from "./types";
+import { Socket } from "net";
+const canonicalize = require("canonicalize");
+
 export const HELLO_ERROR = "";
 export const TYPE_ERROR = "Unsupported message type received\n";
 export const FORMAT_ERROR = "Invalid message format\n";
@@ -12,6 +22,8 @@ export const ALLOWABLE_TYPES: Set<string> = new Set([
 	"block",
 	"hello",
 	"acknowledgement",
+	"getpeers",
+	"peers"
 ]);
 
 export var BOOTSTRAPPING_PEERS: Set<string> = new Set([
@@ -30,6 +42,15 @@ export function isValidFirstMessage(response: {}): boolean {
 	} else {
 		return false;
 	}
+}
+
+export function sendErrorMessage(client: Socket, error: string) {
+	const errorMessage: Types.ErrorMessage = {
+		type: "error",
+		error: error,
+	};
+	client.write(canonicalize(errorMessage));
+	client.end();
 }
 
 // Returns JSON that validates the message and adds a corresponding error message if necessary

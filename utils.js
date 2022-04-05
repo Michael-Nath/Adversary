@@ -1,6 +1,7 @@
 "use strict";
 exports.__esModule = true;
-exports.validateMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
+exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
+var canonicalize = require("canonicalize");
 exports.HELLO_ERROR = "";
 exports.TYPE_ERROR = "Unsupported message type received\n";
 exports.FORMAT_ERROR = "Invalid message format\n";
@@ -10,6 +11,8 @@ exports.ALLOWABLE_TYPES = new Set([
     "block",
     "hello",
     "acknowledgement",
+    "getpeers",
+    "peers"
 ]);
 exports.BOOTSTRAPPING_PEERS = new Set([
     "149.28.204.235",
@@ -27,6 +30,15 @@ function isValidFirstMessage(response) {
     }
 }
 exports.isValidFirstMessage = isValidFirstMessage;
+function sendErrorMessage(client, error) {
+    var errorMessage = {
+        type: "error",
+        error: error
+    };
+    client.write(canonicalize(errorMessage));
+    client.end();
+}
+exports.sendErrorMessage = sendErrorMessage;
 function validateMessage(message) {
     var json = {};
     try {

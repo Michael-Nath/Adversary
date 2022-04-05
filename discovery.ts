@@ -1,27 +1,22 @@
+/**
+ * @author Michael D. Nath, Kenan Hasanaliyev, Gabriel Greenstein
+ * @email mnath@stanford.edu, kenanhas@stanford.edu, gbg222@stanford.edu
+ * @create date 2022-04-02
+ * @modify date 2022-04-02
+ * @desc [description]
+ */
 import * as Net from "net";
 import * as Types from "./types";
 import * as Utils from "./utils";
 import * as fs from "fs";
-import { smth } from "./client";
 import * as path from "path";
 const canonicalize = require("canonicalize");
-function sleep(milliseconds) {
-	const start = Date.now();
-	while (Date.now() - start < milliseconds);
-}
-
-declare global {
-	var peerStatuses: {};
-}
-
-smth();
-console.log(globalThis.peerStatuses);
 
 export function connectToNode(client: Net.Socket) {
 	// If there is no error, the server has accepted the request and created a new
 	// socket dedicated to us.
 	console.log("TCP connection established with the server.");
-
+	console.log(globalThis.peerStatuses);
 	// The client can now send data to the server by writing to its socket.
 	const helloMessage: Types.HelloMessage = {
 		type: "hello",
@@ -33,13 +28,20 @@ export function connectToNode(client: Net.Socket) {
 	client.write(canonicalize(helloMessage));
 }
 
-export function getDataFromNode(client: Net.Socket, chunk: Buffer) {
-	let firstMessageHello = false; // TODO: please change this so that it is stateful
+export function getDataFromNode(
+	client: Net.Socket,
+	peer: string,
+	chunk: Buffer
+) {
+	// console.log(globalThis.peerStatuses);
 	const response: Types.ValidationMessage = Utils.validateMessage(
 		chunk.toString()
 	);
 	// Check if first message is hello
-	if (!firstMessageHello && !Utils.isValidFirstMessage(response)) {
+	if (
+		(!globalThis.peerStatuses[peer] || false) &&
+		!Utils.isValidFirstMessage(response)
+	) {
 		const errorMessage: Types.ErrorMessage = {
 			type: "error",
 			error: Utils.HELLO_ERROR,
@@ -48,29 +50,70 @@ export function getDataFromNode(client: Net.Socket, chunk: Buffer) {
 		client.end();
 	} else {
 		// Acknowledge that client read server's hello exactly once
-		!firstMessageHello &&
+		(!globalThis.peerStatuses[peer] || false) &&
 			client.write(
 				canonicalize({
 					type: "acknowledgement",
 					message: "Client has received server message",
 				})
 			);
-		firstMessageHello = true;
+		globalThis.peerStatuses[peer] = true;
 	}
 	// STEP THREE OF TCP HANDSHAKE - CLIENT VERIFIES ITS WRITING FUNCTIONALITY
 	console.log(`Data received from the server: ${chunk.toString()}.`);
+	console.log(globalThis.peerStatuses);
+}
 
-	// Request an end to the connection after the data has been received.
-	client.end();
+export function getHelloMessage(
+	client: Net.Socket,
+	peer: string,
+	chunk: Buffer
+) {
+	const response: Types.ValidationMessage = Utils.validateMessage(
+		chunk.toString()
+	);
+	if (!globalThis.peerStatuses[peer] && !Utils.isValidFirstMessage(response)) {
+		const errorMessage: Types.ErrorMessage = {
+			type: "error",
+			error: Utils.HELLO_ERROR,
+		};
+		client.write(canonicalize(errorMessage));
+		client.end();
+	} else {
+		globalThis.peerStatuses[peer] = true;
+	}
+	console.log(`Data received from the server: ${chunk.toString()}.`);
+	console.log(globalThis.peerStatuses);
+}
+
+export function sendPeers(client: Net.Socket, peer: string, chunk: Buffer) {
+	const response: Types.ValidationMessage = Utils.validateMessage(
+		chunk.toString()
+	);
+	console.log(response);
+	if (response["error"]) {
+		Utils.sendErrorMessage(client, response["error"]["error"]);
+	}
+	if (response["data"]["type"] != "getpeers") return;
+	const peersArray = [];
+	globalThis.peers.forEach((peer) => {
+		peersArray.push(`${peer}:${Utils.PORT}`);
+	});
+	const peersMessage = {
+		type: "peers",
+		peers: peersArray,
+	};
+	client.write(canonicalize(peersMessage));
 }
 
 export function obtainBootstrappingPeers(): Set<string> | void {
-	fs.readFile(path.join(__dirname, "peers.txt"), "utf8", (error, data) => {
-		if (error) {
-			console.error(error);
-			return;
-		}
+	try {
+		const data = fs.readFileSync(path.join(__dirname, "peers.txt"), {
+			encoding: "utf8",
+		});
 		return new Set(data.split(/\r?\n/));
-	});
-	return;
+	} catch (err) {
+		console.error(err);
+		return;
+	}
 }
