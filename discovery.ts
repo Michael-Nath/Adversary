@@ -65,7 +65,7 @@ export function getDataFromNode(
 }
 
 export function getHelloMessage(
-	client: Net.Socket,
+	socket: Net.Socket,
 	peer: string,
 	chunk: Buffer
 ) {
@@ -77,8 +77,8 @@ export function getHelloMessage(
 			type: "error",
 			error: Utils.HELLO_ERROR,
 		};
-		client.write(canonicalize(errorMessage));
-		client.end();
+		socket.write(canonicalize(errorMessage));
+		socket.end();
 	} else {
 		globalThis.peerStatuses[peer] = true;
 	}
@@ -86,6 +86,51 @@ export function getHelloMessage(
 	console.log(globalThis.peerStatuses);
 }
 
+export function getHelloFromPeer(
+	socket: Net.Socket,
+	peer: string,
+	chunk: Buffer
+) {
+	const response: Types.ValidationMessage = Utils.validateMessage(
+		chunk.toString()
+	);
+	if (
+		!globalThis.serverPeerStatusses[peer] &&
+		!Utils.isValidFirstMessage(response)
+	) {
+		const errorMessage: Types.ErrorMessage = {
+			type: "error",
+			error: Utils.HELLO_ERROR,
+		};
+		socket.write(canonicalize(errorMessage));
+		socket.destroy();
+	} else {
+		globalThis.serverPeerStatuses[peer] = true;
+	}
+}
+
+export function getPeers(socket: Net.Socket) {
+	const getPeersMessage = {
+		type: "getpeers",
+	};
+	socket.write(canonicalize(getPeersMessage));
+}
+
+export function updatePeers(socket: Net.Socket, chunk: Buffer) {
+	const response: Types.ValidationMessage = Utils.validateMessage(
+		chunk.toString()
+	);
+
+	if (response["error"]) {
+		Utils.sendErrorMessage(socket, response["error"]["error"]);
+	}
+	if (response["data"]["type"] != "peers") return;
+	const newPeers: Array<string> = response["data"]["peers"];
+	newPeers.forEach((newPeer) => {
+		globalThis.peers.add(newPeer);
+	});
+	console.log(globalThis.peers);
+}
 export function sendPeers(client: Net.Socket, peer: string, chunk: Buffer) {
 	const response: Types.ValidationMessage = Utils.validateMessage(
 		chunk.toString()

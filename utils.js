@@ -12,7 +12,7 @@ exports.ALLOWABLE_TYPES = new Set([
     "hello",
     "acknowledgement",
     "getpeers",
-    "peers"
+    "peers",
 ]);
 exports.BOOTSTRAPPING_PEERS = new Set([
     "149.28.204.235",
@@ -41,6 +41,7 @@ function sendErrorMessage(client, error) {
 exports.sendErrorMessage = sendErrorMessage;
 function validateMessage(message) {
     var json = {};
+    console.log(message);
     try {
         var parsedMessage = JSON.parse(message);
         json["data"] = parsedMessage;

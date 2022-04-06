@@ -4,8 +4,7 @@ var Net = require("net");
 var Utils = require("./utils");
 var Discovery = require("./discovery");
 globalThis.peerStatuses = {};
-globalThis.peers =
-    Discovery.obtainBootstrappingPeers();
+globalThis.peers = Discovery.obtainBootstrappingPeers();
 console.log(peers);
 globalThis.peers.forEach(function (peer) {
     globalThis.peerStatuses[peer] = false;
@@ -15,6 +14,7 @@ globalThis.peers.forEach(function (peer) {
     });
     client.on("data", function (chunk) { return Discovery.getHelloMessage(client, peer, chunk); });
     client.on("data", function (chunk) { return Discovery.sendPeers(client, peer, chunk); });
+    client.on("data", function (chunk) { return Discovery.updatePeers(client, chunk); });
     client.on("end", function () {
         console.log("Requested an end to the TCP connection");
     });

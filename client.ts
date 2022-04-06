@@ -17,8 +17,7 @@ declare global {
 }
 
 globalThis.peerStatuses = {};
-globalThis.peers =
-	Discovery.obtainBootstrappingPeers() as Set<string>;
+globalThis.peers = Discovery.obtainBootstrappingPeers() as Set<string>;
 console.log(peers);
 globalThis.peers.forEach((peer) => {
 	globalThis.peerStatuses[peer] = false;
@@ -31,6 +30,7 @@ globalThis.peers.forEach((peer) => {
 	// // The client can also receive data from the server by reading from its socket.
 	client.on("data", (chunk) => Discovery.getHelloMessage(client, peer, chunk));
 	client.on("data", (chunk) => Discovery.sendPeers(client, peer, chunk));
+	client.on("data", (chunk) => Discovery.updatePeers(client, chunk));
 	client.on("end", function () {
 		console.log("Requested an end to the TCP connection");
 	});

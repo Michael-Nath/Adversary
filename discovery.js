@@ -1,6 +1,6 @@
 "use strict";
 exports.__esModule = true;
-exports.obtainBootstrappingPeers = exports.sendPeers = exports.getHelloMessage = exports.getDataFromNode = exports.connectToNode = void 0;
+exports.obtainBootstrappingPeers = exports.sendPeers = exports.updatePeers = exports.getPeers = exports.getHelloFromPeer = exports.getHelloMessage = exports.getDataFromNode = exports.connectToNode = void 0;
 var Utils = require("./utils");
 var fs = require("fs");
 var path = require("path");
@@ -39,15 +39,15 @@ function getDataFromNode(client, peer, chunk) {
     console.log(globalThis.peerStatuses);
 }
 exports.getDataFromNode = getDataFromNode;
-function getHelloMessage(client, peer, chunk) {
+function getHelloMessage(socket, peer, chunk) {
     var response = Utils.validateMessage(chunk.toString());
     if (!globalThis.peerStatuses[peer] && !Utils.isValidFirstMessage(response)) {
         var errorMessage = {
             type: "error",
             error: Utils.HELLO_ERROR
         };
-        client.write(canonicalize(errorMessage));
-        client.end();
+        socket.write(canonicalize(errorMessage));
+        socket.end();
     }
     else {
         globalThis.peerStatuses[peer] = true;
@@ -56,6 +56,43 @@ function getHelloMessage(client, peer, chunk) {
     console.log(globalThis.peerStatuses);
 }
 exports.getHelloMessage = getHelloMessage;
+function getHelloFromPeer(socket, peer, chunk) {
+    var response = Utils.validateMessage(chunk.toString());
+    if (!globalThis.serverPeerStatusses[peer] &&
+        !Utils.isValidFirstMessage(response)) {
+        var errorMessage = {
+            type: "error",
+            error: Utils.HELLO_ERROR
+        };
+        socket.write(canonicalize(errorMessage));
+        socket.destroy();
+    }
+    else {
+        globalThis.serverPeerStatuses[peer] = true;
+    }
+}
+exports.getHelloFromPeer = getHelloFromPeer;
+function getPeers(socket) {
+    var getPeersMessage = {
+        type: "getpeers"
+    };
+    socket.write(canonicalize(getPeersMessage));
+}
+exports.getPeers = getPeers;
+function updatePeers(socket, chunk) {
+    var response = Utils.validateMessage(chunk.toString());
+    if (response["error"]) {
+        Utils.sendErrorMessage(socket, response["error"]["error"]);
+    }
+    if (response["data"]["type"] != "peers")
+        return;
+    var newPeers = response["data"]["peers"];
+    newPeers.forEach(function (newPeer) {
+        globalThis.peers.add(newPeer);
+    });
+    console.log(globalThis.peers);
+}
+exports.updatePeers = updatePeers;
 function sendPeers(client, peer, chunk) {
     var response = Utils.validateMessage(chunk.toString());
     console.log(response);

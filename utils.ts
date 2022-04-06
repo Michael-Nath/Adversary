@@ -23,7 +23,7 @@ export const ALLOWABLE_TYPES: Set<string> = new Set([
 	"hello",
 	"acknowledgement",
 	"getpeers",
-	"peers"
+	"peers",
 ]);
 
 export var BOOTSTRAPPING_PEERS: Set<string> = new Set([
@@ -56,6 +56,7 @@ export function sendErrorMessage(client: Socket, error: string) {
 // Returns JSON that validates the message and adds a corresponding error message if necessary
 export function validateMessage(message: string): Types.ValidationMessage {
 	const json = {} as Types.ValidationMessage;
+	console.log(message);
 	try {
 		const parsedMessage: JSON = JSON.parse(message);
 		json["data"] = parsedMessage;

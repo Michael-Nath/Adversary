@@ -8,8 +8,14 @@
 import * as Net from "net";
 import * as Utils from "./utils";
 import * as types from "./types";
+import * as Discovery from "./discovery";
 const canonicalize = require("canonicalize");
 
+declare global {
+	var serverPeerStatusses: {};
+}
+
+globalThis.serverPeerStatusses = {};
 // cononicalize(json) takes in a JSON and returns another JSON
 
 // Use net.createServer() in your code. This is just for illustration purpose.
@@ -36,38 +42,45 @@ server.on("connection", function (socket) {
 		version: "0.8.0",
 		agent: "test agent",
 	};
-	let firstMessageHello = false;
 
 	// SECOND STEP OF TCP HANDSHAKE - SERVER ACKNOWLEDGES CLIENT'S HELLO
 	socket.write(canonicalize(helloMessage));
-
+	Discovery.getPeers(socket);
 	// The server can also receive data from the client by reading from its socket.
-	socket.on("data", function (chunk) {
-		const response: {} = Utils.validateMessage(chunk.toString());
-		console.log(response);
-		if (!response["valid"]) {
-			// End connection if response is invalid
-			socket.write(canonicalize(response["error"]));
-			socket.destroy();
-		} else {
-			// Checks if first message is hello or not
-			if (!firstMessageHello && !Utils.isValidFirstMessage(response)) {
-				const errorMessage: types.ErrorMessage = {
-					type: "error",
-					error: Utils.HELLO_ERROR,
-				};
-				// End connection if it isn't
-				socket.write(canonicalize(errorMessage));
-				socket.destroy();
-			} else {
-				// Inform future incoming packets that the first message was indeed hello
-				firstMessageHello = true;
-			}
-		}
-		console.log(
-			`Data received from client: ${JSON.stringify(response["data"])}`
-		);
-	});
+	// socket.on("data", function (chunk) {
+	// 	const response: {} = Utils.validateMessage(chunk.toString());
+	// 	console.log(response);
+	// 	if (!response["valid"]) {
+	// 		// End connection if response is invalid
+	// 		socket.write(canonicalize(response["error"]));
+	// 		socket.destroy();
+	// 	} else {
+	// 		// Checks if first message is hello or not
+	// 		if (!firstMessageHello && !Utils.isValidFirstMessage(response)) {
+	// 			const errorMessage: types.ErrorMessage = {
+	// 				type: "error",
+	// 				error: Utils.HELLO_ERROR,
+	// 			};
+	// 			// End connection if it isn't
+	// 			socket.write(canonicalize(errorMessage));
+	// 			socket.destroy();
+	// 		} else {
+	// 			// Inform future incoming packets that the first message was indeed hello
+	// 			firstMessageHello = true;
+	// 		}
+	// 	}
+	// 	console.log(
+	// 		`Data received from client: ${JSON.stringify(response["data"])}`
+	// 	);
+	// });
+
+	socket.on("data", (chunk) =>
+		Discovery.getHelloFromPeer(socket, socket.address["address"], chunk)
+	);
+
+	socket.on("data", (chunk) =>
+		Discovery.updatePeers(socket, chunk)
+	);
 
 	// When the client requests to end the TCP connection with the server, the server
 	// ends the connection.
