@@ -36,94 +36,29 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.obtainBootstrappingPeers = exports.sendPeers = exports.updatePeers = exports.getPeers = exports.getHello = exports.getHelloFromPeer = exports.getHelloMessage = exports.getDataFromNode = exports.connectToNode = void 0;
+exports.obtainBootstrappingPeers = exports.sendPeers = exports.updatePeers = exports.getPeers = exports.getHello = exports.connectToNode = void 0;
 var Utils = require("./utils");
 var fs = require("fs");
 var path = require("path");
 var canonicalize = require("canonicalize");
 function connectToNode(client) {
     console.log("TCP connection established with the server.");
-    console.log(globalThis.peerStatuses);
     var helloMessage = {
         type: "hello",
         version: "0.8.0",
         agent: "Adversary Node"
     };
-    client.write(canonicalize(helloMessage));
+    client.write(canonicalize(helloMessage) + "\n");
 }
 exports.connectToNode = connectToNode;
-function getDataFromNode(client, peer, chunk) {
-    var response = Utils.validateMessage(chunk.toString());
-    if ((!globalThis.peerStatuses[peer] || false) &&
-        !Utils.isValidFirstMessage(response)) {
-        var errorMessage = {
-            type: "error",
-            error: Utils.HELLO_ERROR
-        };
-        client.write(canonicalize(errorMessage));
-        client.end();
-    }
-    else {
-        (!globalThis.peerStatuses[peer] || false) &&
-            client.write(canonicalize({
-                type: "acknowledgement",
-                message: "Client has received server message"
-            }));
-        globalThis.peerStatuses[peer] = true;
-    }
-    console.log("Data received from the server: ".concat(chunk.toString(), "."));
-    console.log(globalThis.peerStatuses);
-}
-exports.getDataFromNode = getDataFromNode;
-function getHelloMessage(socket, peer, chunk) {
-    var response = Utils.validateMessage(chunk.toString());
-    if (!globalThis.peerStatuses[peer] && !Utils.isValidFirstMessage(response)) {
-        var errorMessage = {
-            type: "error",
-            error: Utils.HELLO_ERROR
-        };
-        socket.write(canonicalize(errorMessage));
-        socket.end();
-    }
-    else {
-        globalThis.peerStatuses[peer] = true;
-    }
-    console.log("Data received from the server: ".concat(chunk.toString(), "."));
-    console.log(globalThis.peerStatuses);
-}
-exports.getHelloMessage = getHelloMessage;
-function getHelloFromPeer(socket, peer, chunk) {
-    var response = Utils.validateMessage(chunk.toString());
-    if (!globalThis.serverPeerStatusses[peer] &&
-        !Utils.isValidFirstMessage(response)) {
-        var errorMessage = {
-            type: "error",
-            error: Utils.HELLO_ERROR
-        };
-        socket.write(canonicalize(errorMessage));
-        socket.destroy();
-    }
-    else {
-        globalThis.serverPeerStatuses[peer] = true;
-    }
-}
-exports.getHelloFromPeer = getHelloFromPeer;
-function getHello(socket, peer, chunk, weInitiated) {
+function getHello(socket, peer, response, weInitiated) {
     var _this = this;
-    var response = Utils.validateMessage(chunk.toString());
     var peerExists;
     var list = weInitiated ? "clientPeers" : "serverPeers";
     (function () { return __awaiter(_this, void 0, void 0, function () {
-        var _a;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    _a = peer;
-                    return [4, Utils.DB.get(list)];
-                case 1:
-                    peerExists = _a in (_b.sent());
-                    return [2];
-            }
+        return __generator(this, function (_a) {
+            peerExists = peer in globalThis.peers;
+            return [2];
         });
     }); })();
     if (!peerExists && !Utils.isValidFirstMessage(response)) {
@@ -131,20 +66,35 @@ function getHello(socket, peer, chunk, weInitiated) {
             type: "error",
             error: Utils.HELLO_ERROR
         };
-        socket.write(canonicalize(errorMessage));
+        socket.write(canonicalize(errorMessage) + "\n");
         socket.destroy();
     }
     else {
         (function () { return __awaiter(_this, void 0, void 0, function () {
-            var newPeerEntry;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
+            var newPeerEntry, helloMessage, _a, _b;
+            return __generator(this, function (_c) {
+                switch (_c.label) {
                     case 0:
                         newPeerEntry = {};
                         newPeerEntry[peer] = [];
+                        helloMessage = {
+                            type: "hello",
+                            version: "0.8.0",
+                            agent: "Adversary Node"
+                        };
+                        if (!peerExists) {
+                            socket.write(canonicalize(helloMessage) + '\n');
+                            getPeers(socket);
+                        }
                         return [4, Utils.DB.merge(list, newPeerEntry)];
                     case 1:
-                        _a.sent();
+                        _c.sent();
+                        globalThis.peers.add(peer);
+                        console.log(globalThis.peers);
+                        _b = (_a = console).log;
+                        return [4, Utils.DB.get(list)];
+                    case 2:
+                        _b.apply(_a, [_c.sent()]);
                         return [2];
                 }
             });
@@ -156,40 +106,18 @@ function getPeers(socket) {
     var getPeersMessage = {
         type: "getpeers"
     };
-    socket.write(canonicalize(getPeersMessage));
+    socket.write(canonicalize(getPeersMessage) + "\n");
 }
 exports.getPeers = getPeers;
-function updatePeers(socket, chunk) {
-    var response = Utils.validateMessage(chunk.toString());
-    if (response["error"]) {
-        Utils.sendErrorMessage(socket, response["error"]["error"]);
-    }
-    if (response["data"]["type"] != "peers")
-        return;
+function updatePeers(socket, response) {
     var newPeers = response["data"]["peers"];
     newPeers.forEach(function (newPeer) {
         globalThis.peers.add(newPeer);
     });
-    console.log(globalThis.peers);
 }
 exports.updatePeers = updatePeers;
-function sendPeers(client, peer, chunk) {
-    var response = Utils.validateMessage(chunk.toString());
-    console.log(response);
-    if (response["error"]) {
-        Utils.sendErrorMessage(client, response["error"]["error"]);
-    }
-    if (response["data"]["type"] != "getpeers")
-        return;
+function sendPeers(client, peer, response) {
     var peersArray = [];
-    globalThis.peers.forEach(function (peer) {
-        peersArray.push("".concat(peer, ":").concat(Utils.PORT));
-    });
-    var peersMessage = {
-        type: "peers",
-        peers: peersArray
-    };
-    client.write(canonicalize(peersMessage));
 }
 exports.sendPeers = sendPeers;
 function obtainBootstrappingPeers() {

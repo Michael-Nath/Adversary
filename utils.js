@@ -36,20 +36,21 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.resetStore = exports.initializeStore = exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.DB = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
+exports.sanitizeChunk = exports.routeMessage = exports.resetStore = exports.initializeStore = exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.DB = exports.WELCOME_ERROR = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
 var level_ts_1 = require("level-ts");
+var Discovery = require("./discovery");
 var canonicalize = require("canonicalize");
 var DATABASE_PATH = "./database";
 exports.HELLO_ERROR = "";
 exports.TYPE_ERROR = "Unsupported message type received\n";
 exports.FORMAT_ERROR = "Invalid message format\n";
+exports.WELCOME_ERROR = "Must send hello message first.";
 exports.DB = new level_ts_1["default"](DATABASE_PATH);
 exports.PORT = 18018;
 exports.ALLOWABLE_TYPES = new Set([
     "transaction",
     "block",
     "hello",
-    "acknowledgement",
     "getpeers",
     "peers",
 ]);
@@ -78,7 +79,7 @@ function sendErrorMessage(client, error) {
     client.end();
 }
 exports.sendErrorMessage = sendErrorMessage;
-function validateMessage(message) {
+function validateMessage(message, peer) {
     var json = {};
     console.log(message);
     try {
@@ -86,6 +87,10 @@ function validateMessage(message) {
         json["data"] = parsedMessage;
         if (!exports.ALLOWABLE_TYPES.has(parsedMessage["type"])) {
             json["error"] = { type: "error", error: exports.TYPE_ERROR };
+            return json;
+        }
+        if (parsedMessage["type"] != "hello" && !(peer in globalThis.peers)) {
+            json["error"] = { type: "error", error: exports.WELCOME_ERROR };
             return json;
         }
     }
@@ -137,4 +142,32 @@ function resetStore() {
     });
 }
 exports.resetStore = resetStore;
+function routeMessage(msg, socket, weInitiated, peer) {
+    var response = validateMessage(msg, peer);
+    console.log(response);
+    if (response["error"]) {
+        sendErrorMessage(socket, response["error"]["error"]);
+        return;
+    }
+    switch (response["data"]["type"]) {
+        case "hello":
+            Discovery.getHello(socket, peer, response, weInitiated);
+        case "getpeers":
+            Discovery.sendPeers(socket, peer, response);
+        case "peers":
+            Discovery.updatePeers(socket, response);
+    }
+}
+exports.routeMessage = routeMessage;
+function sanitizeChunk(socket, peer, chunk) {
+    var str = chunk.toString();
+    globalThis.peerStatuses[peer]["buffer"] += str;
+    if (str.charAt(str.length - 1) == "\n") {
+        var message = globalThis.peerStatuses[peer]["buffer"];
+        globalThis.peerStatuses[peer]["buffer"] = "";
+        return message;
+    }
+    return "";
+}
+exports.sanitizeChunk = sanitizeChunk;
 //# sourceMappingURL=utils.js.map

@@ -8,13 +8,14 @@
 import * as Types from "./types";
 import level from "level-ts";
 import { Socket } from "net";
-
+import * as Discovery from "./discovery";
 const canonicalize = require("canonicalize");
 const DATABASE_PATH = "./database";
 
 export const HELLO_ERROR = "";
 export const TYPE_ERROR = "Unsupported message type received\n";
 export const FORMAT_ERROR = "Invalid message format\n";
+export const WELCOME_ERROR = "Must send hello message first.";
 export const DB = new level(DATABASE_PATH);
 
 // TODO:
@@ -25,7 +26,6 @@ export const ALLOWABLE_TYPES: Set<string> = new Set([
 	"transaction",
 	"block",
 	"hello",
-	"acknowledgement",
 	"getpeers",
 	"peers",
 ]);
@@ -58,7 +58,10 @@ export function sendErrorMessage(client: Socket, error: string) {
 }
 
 // Returns JSON that validates the message and adds a corresponding error message if necessary
-export function validateMessage(message: string): Types.ValidationMessage {
+export function validateMessage(
+	message: string,
+	peer: string
+): Types.ValidationMessage {
 	const json = {} as Types.ValidationMessage;
 	console.log(message);
 	try {
@@ -66,6 +69,10 @@ export function validateMessage(message: string): Types.ValidationMessage {
 		json["data"] = parsedMessage;
 		if (!ALLOWABLE_TYPES.has(parsedMessage["type"])) {
 			json["error"] = { type: "error", error: TYPE_ERROR };
+			return json;
+		}
+		if (parsedMessage["type"] != "hello" && !(peer in globalThis.peers)) {
+			json["error"] = { type: "error", error: WELCOME_ERROR };
 			return json;
 		}
 	} catch (err) {
@@ -91,4 +98,36 @@ export async function initializeStore() {
 export async function resetStore() {
 	DB.del("clientPeers");
 	DB.del("serverPeers");
+}
+
+export function routeMessage(
+	msg: string,
+	socket: Socket,
+	weInitiated: boolean,
+	peer: string
+) {
+	const response = validateMessage(msg, peer);
+	console.log(response);
+	if (response["error"]) {
+		sendErrorMessage(socket, response["error"]["error"]);
+		return;
+	}
+	switch (response["data"]["type"]) {
+		case "hello":
+			Discovery.getHello(socket, peer, response, weInitiated);
+		case "getpeers":
+			Discovery.sendPeers(socket, peer, response);
+		case "peers":
+			Discovery.updatePeers(socket, response);
+	}
+}
+export function sanitizeChunk(socket, peer, chunk) {
+	const str: string = chunk.toString();
+	globalThis.peerStatuses[peer]["buffer"] += str;
+	if (str.charAt(str.length - 1) == "\n") {
+		const message = globalThis.peerStatuses[peer]["buffer"]
+		globalThis.peerStatuses[peer]["buffer"] = "";
+		return message;
+	}
+	return ""
 }

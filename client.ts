@@ -12,15 +12,9 @@ import * as Utils from "./utils";
 import * as Types from "./types";
 import * as Discovery from "./discovery";
 
-// The port number and hostname of the server.
-declare global {
-	var peerStatuses: {};
-	var peers: Set<string>;
-}
 
-// globalThis.peerStatuses = {};
-// globalThis.peers = Discovery.obtainBootstrappingPeers() as Set<string>;
-// console.log(peers);
+globalThis.peerStatuses = {};
+globalThis.peers = Discovery.obtainBootstrappingPeers() as Set<string>;
 
 // sets up the store containg server peers and client peers
 // (async () => {
