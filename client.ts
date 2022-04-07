@@ -7,31 +7,64 @@
  */
 // Include Nodejs' net module.
 const Net = require("net");
+
 import * as Utils from "./utils";
 import * as Types from "./types";
 import * as Discovery from "./discovery";
+
 // The port number and hostname of the server.
 declare global {
 	var peerStatuses: {};
 	var peers: Set<string>;
 }
 
-globalThis.peerStatuses = {};
-globalThis.peers = Discovery.obtainBootstrappingPeers() as Set<string>;
-console.log(peers);
-globalThis.peers.forEach((peer) => {
-	globalThis.peerStatuses[peer] = false;
-	// Create a new TCP client.
-	const client = new Net.Socket();
-	// Send a connection request to the server.
-	client.connect({ port: Utils.PORT, host: peer }, () =>
-		Discovery.connectToNode(client)
-	);
-	// // The client can also receive data from the server by reading from its socket.
-	client.on("data", (chunk) => Discovery.getHelloMessage(client, peer, chunk));
-	client.on("data", (chunk) => Discovery.sendPeers(client, peer, chunk));
-	client.on("data", (chunk) => Discovery.updatePeers(client, chunk));
-	client.on("end", function () {
-		console.log("Requested an end to the TCP connection");
+// globalThis.peerStatuses = {};
+// globalThis.peers = Discovery.obtainBootstrappingPeers() as Set<string>;
+// console.log(peers);
+
+// sets up the store containg server peers and client peers
+// (async () => {
+// 	await Utils.initializeStore();
+// })();
+
+// globalThis.peers.forEach((peer) => {
+// 	globalThis.peerStatuses[peer] = false;
+// 	// Create a new TCP client.
+// 	const client = new Net.Socket();
+// 	// Send a connection request to the server.
+// 	client.connect({ port: Utils.PORT, host: peer }, () =>
+// 		Discovery.connectToNode(client)
+// 	);
+// 	// // The client can also receive data from the server by reading from its socket.
+// 	// client.on("data", (chunk) => Discovery.getHelloMessage(client, peer, chunk));
+// 	// client.on("data", (chunk) => Discovery.getHello(client, peer, chunk, true));
+// 	// client.on("data", (chunk) => Discovery.sendPeers(client, peer, chunk));
+// 	// client.on("data", (chunk) => Discovery.updatePeers(client, chunk));
+// 	// client.on("data", (chunk) => console.log(chunk.toString()));
+// 	client.on("end", function () {
+// 		console.log("Requested an end to the TCP connection");
+// 	});
+// });
+
+export function startClients() {
+	globalThis.peerStatuses = {};
+	globalThis.peers = Discovery.obtainBootstrappingPeers() as Set<string>;
+	console.log(peers);
+	globalThis.peers.forEach((peer) => {
+		globalThis.peerStatuses[peer] = false;
+		// Create a new TCP client.
+		const client = new Net.Socket();
+		// Send a connection request to the server.
+		client.connect({ port: Utils.PORT, host: peer }, () =>
+			Discovery.connectToNode(client)
+		);
+		// // The client can also receive data from the server by reading from its socket.
+		client.on("data", (chunk) => Discovery.getHello(client, peer, chunk, true));
+		// client.on("data", (chunk) => Discovery.sendPeers(client, peer, chunk));
+		// client.on("data", (chunk) => Discovery.updatePeers(client, chunk));
+		// client.on("data", (chunk) => console.log(chunk.toString()));
+		client.on("end", function () {
+			console.log("Requested an end to the TCP connection");
+		});
 	});
-});
+}

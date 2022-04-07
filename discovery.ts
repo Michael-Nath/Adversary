@@ -26,6 +26,7 @@ export function connectToNode(client: Net.Socket) {
 	// FIRST STEP OF TCP HANDSHAKE - CLIENT SEEKS SERVER EXISTENCE
 
 	client.write(canonicalize(helloMessage));
+	// getPeers(client);
 }
 
 export function getDataFromNode(
@@ -106,6 +107,36 @@ export function getHelloFromPeer(
 		socket.destroy();
 	} else {
 		globalThis.serverPeerStatuses[peer] = true;
+	}
+}
+
+export function getHello(
+	socket: Net.Socket,
+	peer: string,
+	chunk: Buffer,
+	weInitiated: boolean
+) {
+	const response: Types.ValidationMessage = Utils.validateMessage(
+		chunk.toString()
+	);
+	let peerExists;
+	const list = weInitiated ? "clientPeers" : "serverPeers";
+	(async () => {
+		peerExists = peer in (await Utils.DB.get(list));
+	})();
+	if (!peerExists && !Utils.isValidFirstMessage(response)) {
+		const errorMessage: Types.ErrorMessage = {
+			type: "error",
+			error: Utils.HELLO_ERROR,
+		};
+		socket.write(canonicalize(errorMessage));
+		socket.destroy();
+	} else {
+		(async () => {
+			const newPeerEntry = {};
+			newPeerEntry[peer] = [];
+			await Utils.DB.merge(list, newPeerEntry);
+		})();
 	}
 }
 

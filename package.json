@@ -4,6 +4,7 @@
     "typescript": "^4.6.3"
   },
   "dependencies": {
-    "canonicalize": "^1.0.8"
+    "canonicalize": "^1.0.8",
+    "level-ts": "^2.1.0"
   }
 }

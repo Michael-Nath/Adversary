@@ -6,12 +6,16 @@
  * @desc [description]
  */
 import * as Types from "./types";
+import level from "level-ts";
 import { Socket } from "net";
+
 const canonicalize = require("canonicalize");
+const DATABASE_PATH = "./database";
 
 export const HELLO_ERROR = "";
 export const TYPE_ERROR = "Unsupported message type received\n";
 export const FORMAT_ERROR = "Invalid message format\n";
+export const DB = new level(DATABASE_PATH);
 
 // TODO:
 // Make data property of ValidationMessage work with JSON
@@ -71,4 +75,20 @@ export function validateMessage(message: string): Types.ValidationMessage {
 	}
 	json["valid"] = true;
 	return json;
+}
+
+export async function initializeStore() {
+	if (!(await DB.exists("clientPeers"))) {
+		DB.put("clientPeers", {});
+	}
+	if (!(await DB.exists("serverPeers"))) {
+		DB.put("serverPeers", {});
+	}
+	console.log(await DB.get("clientPeers"));
+	console.log(await DB.get("serverPeers"));
+}
+
+export async function resetStore() {
+	DB.del("clientPeers");
+	DB.del("serverPeers");
 }

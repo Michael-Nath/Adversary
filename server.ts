@@ -15,81 +15,104 @@ declare global {
 	var serverPeerStatusses: {};
 }
 
-globalThis.serverPeerStatusses = {};
-// cononicalize(json) takes in a JSON and returns another JSON
+// globalThis.serverPeerStatusses = {};
+// // cononicalize(json) takes in a JSON and returns another JSON
 
-// Use net.createServer() in your code. This is just for illustration purpose.
-// Create a new TCP server.
-const server: Net.Server = new Net.Server();
+// // Use net.createServer() in your code. This is just for illustration purpose.
+// // Create a new TCP server.
+// const server: Net.Server = new Net.Server();
 
-// The server listens to a socket for a client to make a connection request.
-// Think of a socket as an end point.
-server.listen(Utils.PORT, function () {
-	console.log(
-		`Server listening for connection requests on socket localhost:${Utils.PORT}.`
-	);
-});
+// // The server listens to a socket for a client to make a connection request.
+// // Think of a socket as an end point.
+// server.listen(Utils.PORT, function () {
+// 	console.log(
+// 		`Server listening for connection requests on socket localhost:${Utils.PORT}.`
+// 	);
+// });
 
-// When a client requests a connection with the server, the server creates a new
-// socket dedicated to that client.
-server.on("connection", function (socket) {
-	console.log("A new connection has been established.");
+// // When a client requests a connection with the server, the server creates a new
+// // socket dedicated to that client.
+// server.on("connection", function (socket) {
+// 	console.log("A new connection has been established.");
 
-	// Now that a TCP connection has been established, the server can send data to
-	// the client by writing to its socket.
-	const helloMessage: types.HelloMessage = {
-		type: "hello",
-		version: "0.8.0",
-		agent: "test agent",
-	};
+// 	// Now that a TCP connection has been established, the server can send data to
+// 	// the client by writing to its socket.
+// 	const helloMessage: types.HelloMessage = {
+// 		type: "hello",
+// 		version: "0.8.0",
+// 		agent: "test agent",
+// 	};
 
-	// SECOND STEP OF TCP HANDSHAKE - SERVER ACKNOWLEDGES CLIENT'S HELLO
-	socket.write(canonicalize(helloMessage));
-	Discovery.getPeers(socket);
-	// The server can also receive data from the client by reading from its socket.
-	// socket.on("data", function (chunk) {
-	// 	const response: {} = Utils.validateMessage(chunk.toString());
-	// 	console.log(response);
-	// 	if (!response["valid"]) {
-	// 		// End connection if response is invalid
-	// 		socket.write(canonicalize(response["error"]));
-	// 		socket.destroy();
-	// 	} else {
-	// 		// Checks if first message is hello or not
-	// 		if (!firstMessageHello && !Utils.isValidFirstMessage(response)) {
-	// 			const errorMessage: types.ErrorMessage = {
-	// 				type: "error",
-	// 				error: Utils.HELLO_ERROR,
-	// 			};
-	// 			// End connection if it isn't
-	// 			socket.write(canonicalize(errorMessage));
-	// 			socket.destroy();
-	// 		} else {
-	// 			// Inform future incoming packets that the first message was indeed hello
-	// 			firstMessageHello = true;
-	// 		}
-	// 	}
-	// 	console.log(
-	// 		`Data received from client: ${JSON.stringify(response["data"])}`
-	// 	);
-	// });
+// 	// SECOND STEP OF TCP HANDSHAKE - SERVER ACKNOWLEDGES CLIENT'S HELLO
+// 	socket.write(canonicalize(helloMessage));
+// 	// Discovery.getPeers(socket);
 
-	socket.on("data", (chunk) =>
-		Discovery.getHelloFromPeer(socket, socket.address["address"], chunk)
-	);
+// 	socket.on("data", (chunk) =>
+// 		Discovery.getHello(socket, socket.address["address"], chunk, false)
+// 	);
 
-	socket.on("data", (chunk) =>
-		Discovery.updatePeers(socket, chunk)
-	);
+// 	socket.on("data", (chunk) => Discovery.updatePeers(socket, chunk));
 
-	// When the client requests to end the TCP connection with the server, the server
-	// ends the connection.
-	socket.on("end", function () {
-		console.log("Closing connection with the client");
+// 	// When the client requests to end the TCP connection with the server, the server
+// 	// ends the connection.
+// 	socket.on("end", function () {
+// 		console.log("Closing connection with the client");
+// 	});
+
+// 	// Don't forget to catch error, for your own sake.
+// 	socket.on("error", function (err) {
+// 		console.log(`Error: ${err}`);
+// 	});
+// });
+
+export function startServer() {
+	globalThis.serverPeerStatusses = {};
+	// cononicalize(json) takes in a JSON and returns another JSON
+
+	// Use net.createServer() in your code. This is just for illustration purpose.
+	// Create a new TCP server.
+	const server: Net.Server = new Net.Server();
+
+	// The server listens to a socket for a client to make a connection request.
+	// Think of a socket as an end point.
+	server.listen(Utils.PORT, function () {
+		console.log(
+			`Server listening for connection requests on socket localhost:${Utils.PORT}.`
+		);
 	});
 
-	// Don't forget to catch error, for your own sake.
-	socket.on("error", function (err) {
-		console.log(`Error: ${err}`);
+	// When a client requests a connection with the server, the server creates a new
+	// socket dedicated to that client.
+	server.on("connection", function (socket) {
+		console.log("A new connection has been established.");
+
+		// Now that a TCP connection has been established, the server can send data to
+		// the client by writing to its socket.
+		const helloMessage: types.HelloMessage = {
+			type: "hello",
+			version: "0.8.0",
+			agent: "test agent",
+		};
+
+		// SECOND STEP OF TCP HANDSHAKE - SERVER ACKNOWLEDGES CLIENT'S HELLO
+		socket.write(canonicalize(helloMessage));
+		// Discovery.getPeers(socket);
+
+		socket.on("data", (chunk) =>
+			Discovery.getHello(socket, socket.address["address"], chunk, false)
+		);
+
+		socket.on("data", (chunk) => Discovery.updatePeers(socket, chunk));
+
+		// When the client requests to end the TCP connection with the server, the server
+		// ends the connection.
+		socket.on("end", function () {
+			console.log("Closing connection with the client");
+		});
+
+		// Don't forget to catch error, for your own sake.
+		socket.on("error", function (err) {
+			console.log(`Error: ${err}`);
+		});
 	});
-});
+}
