@@ -9,7 +9,14 @@ import * as Net from "net";
 import * as Utils from "./utils";
 import * as types from "./types";
 import * as Discovery from "./discovery";
+import { nanoid } from 'nanoid'
 const canonicalize = require("canonicalize");
+
+declare module "net" {
+    interface Socket {
+        id: string;
+    }
+}
 
 export function startServer() {
 	// cononicalize(json) takes in a JSON and returns another JSON
@@ -17,7 +24,6 @@ export function startServer() {
 	// Use net.createServer() in your code. This is just for illustration purpose.
 	// Create a new TCP server.
 	const server: Net.Server = new Net.Server();
-	globalThis.peers = Discovery.obtainBootstrappingPeers() as Set<string>;
 	globalThis.peerStatuses = {};
 	globalThis.peers.forEach((peer) => {
 		globalThis.peerStatuses[peer] = { buffer: "" };
@@ -35,20 +41,34 @@ export function startServer() {
 	server.on("connection", function (socket) {
 		console.log("A new connection has been established.");
 		console.log(globalThis.peers);
+		
+		socket.id = nanoid()
+		globalThis.peerStatuses[socket.id] = { buffer: "" };
 		// Now that a TCP connection has been established, the server can send data to
 		// the client by writing to its socket.
 		socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
 		Discovery.getPeers(socket);
 
 		socket.on("data", (chunk) => {
-			const msgs = chunk.toString().split("\n");
-			if (!chunk.toString().includes("\n")) {
-				Utils.sanitizeChunk(socket, "localhost", chunk)
+			const fullString = chunk.toString()
+			const msgs = fullString.split("\n");
+			console.log("MSGS: ", msgs)
+			if (!fullString.includes("\n")) {
+				Utils.sanitizeString(socket, fullString, false)
 			} else {
-				msgs.forEach((msg) => {
-					msg != "" &&
-						Utils.routeMessage(msg, socket, false, socket.address()["address"]);
-				});
+				for (let i = 0; i < msgs.length; i++) {
+					const msg = msgs[i]
+					if (i == 0) {
+						const completedMessage = Utils.sanitizeString(socket, msg, true)
+						console.log("COMPLETED MESSAGE:");
+						console.log(completedMessage)
+						Utils.routeMessage(completedMessage, socket, socket.address()["address"]);
+					}else if (i == msgs.length - 1) {
+						msg != "" && Utils.sanitizeString(socket, msg, false)
+					}else {
+						Utils.routeMessage(msg, socket, socket.address()["address"]);
+					}
+				}
 			}
 		});
 

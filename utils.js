@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.sanitizeChunk = exports.routeMessage = exports.resetStore = exports.initializeStore = exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.DB = exports.HELLO_MESSAGE = exports.WELCOME_ERROR = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
+exports.updateDBWithPeers = exports.sanitizeString = exports.routeMessage = exports.resetStore = exports.initializeStore = exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.DB = exports.HELLO_MESSAGE = exports.WELCOME_ERROR = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
 var level_ts_1 = require("level-ts");
 var Discovery = require("./discovery");
 var canonicalize = require("canonicalize");
@@ -86,7 +86,6 @@ function sendErrorMessage(client, error) {
 exports.sendErrorMessage = sendErrorMessage;
 function validateMessage(message, peer) {
     var json = {};
-    console.log("MSG TO PARSE: ", message);
     try {
         var parsedMessage = JSON.parse(message);
         json["data"] = parsedMessage;
@@ -126,13 +125,19 @@ exports.initializeStore = initializeStore;
 function resetStore() {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
-            exports.DB.del("peers");
-            return [2];
+            switch (_a.label) {
+                case 0: return [4, exports.DB.exists("peers")];
+                case 1:
+                    if (_a.sent()) {
+                        exports.DB.del("peers");
+                    }
+                    return [2];
+            }
         });
     });
 }
 exports.resetStore = resetStore;
-function routeMessage(msg, socket, weInitiated, peer) {
+function routeMessage(msg, socket, peer) {
     var response = validateMessage(msg, peer);
     if (response["error"]) {
         sendErrorMessage(socket, response["error"]["error"]);
@@ -146,15 +151,35 @@ function routeMessage(msg, socket, weInitiated, peer) {
         Discovery.sendPeers(socket, peer, response);
 }
 exports.routeMessage = routeMessage;
-function sanitizeChunk(socket, peer, chunk) {
-    var str = chunk.toString();
-    globalThis.peerStatuses[peer]["buffer"] += str;
-    if (str.charAt(str.length - 1) == "\n") {
-        var message = globalThis.peerStatuses[peer]["buffer"];
-        globalThis.peerStatuses[peer]["buffer"] = "";
+function sanitizeString(socket, str, willComplete) {
+    globalThis.peerStatuses[socket.id]["buffer"] += str;
+    if (willComplete) {
+        var message = globalThis.peerStatuses[socket.id]["buffer"];
+        globalThis.peerStatuses[socket.id]["buffer"] = "";
         return message;
     }
     return "";
 }
-exports.sanitizeChunk = sanitizeChunk;
+exports.sanitizeString = sanitizeString;
+function updateDBWithPeers(shouldUpdateGlobalThis, peers) {
+    var _this = this;
+    var peersObject = {};
+    peers.forEach(function (newPeer) {
+        peersObject[newPeer] = [];
+        if (shouldUpdateGlobalThis) {
+            globalThis.peers.add(newPeer);
+        }
+    });
+    (function () { return __awaiter(_this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4, exports.DB.merge("peers", peersObject)];
+                case 1:
+                    _a.sent();
+                    return [2];
+            }
+        });
+    }); })();
+}
+exports.updateDBWithPeers = updateDBWithPeers;
 //# sourceMappingURL=utils.js.map

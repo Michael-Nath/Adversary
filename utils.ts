@@ -93,7 +93,9 @@ export async function initializeStore() {
 }
 
 export async function resetStore() {
-	DB.del("peers");
+	if (await DB.exists("peers")) {
+		DB.del("peers");
+	}
 }
 
 export function routeMessage(
@@ -113,13 +115,27 @@ export function routeMessage(
 	else if ((response["data"]["type"] = "getpeers"))
 		Discovery.sendPeers(socket, peer, response);
 }
-export function sanitizeChunk(socket, peer, chunk) {
-	const str: string = chunk.toString();
-	globalThis.peerStatuses[peer]["buffer"] += str;
-	if (str.charAt(str.length - 1) == "\n") {
-		const message = globalThis.peerStatuses[peer]["buffer"];
-		globalThis.peerStatuses[peer]["buffer"] = "";
+export function sanitizeString(socket, str, willComplete) {
+	// const str: string = chunk.toString();
+	globalThis.peerStatuses[socket.id]["buffer"] += str;
+	// str.charAt(str.length - 1) == "\n"
+	if (willComplete) {
+		const message = globalThis.peerStatuses[socket.id]["buffer"]
+		globalThis.peerStatuses[socket.id]["buffer"] = "";
 		return message;
 	}
 	return "";
+}
+
+export function updateDBWithPeers(shouldUpdateGlobalThis, peers: Set<string> | Array<string>) {
+	let peersObject = {}
+	peers.forEach((newPeer) => {
+		peersObject[newPeer] = []
+		if (shouldUpdateGlobalThis) {
+			globalThis.peers.add(newPeer);
+		}
+	});
+	(async () => {
+		await DB.merge("peers", peersObject);
+	})();
 }

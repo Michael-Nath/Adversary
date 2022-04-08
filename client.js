@@ -1,31 +1,41 @@
 "use strict";
 exports.__esModule = true;
-exports.startClients = void 0;
+exports.startClient = void 0;
 var Net = require("net");
 var Utils = require("./utils");
 var Discovery = require("./discovery");
-globalThis.peers = Discovery.obtainBootstrappingPeers();
-function startClients() {
+var nanoid_1 = require("nanoid");
+function startClient() {
     globalThis.peerStatuses = {};
-    globalThis.peers = Discovery.obtainBootstrappingPeers();
     console.log(peers);
     globalThis.peers.forEach(function (peer) {
-        globalThis.peerStatuses[peer] = false;
         var client = new Net.Socket();
+        client.id = (0, nanoid_1.nanoid)();
+        globalThis.peerStatuses[client.id] = { buffer: "" };
         client.connect({ port: Utils.PORT, host: peer }, function () {
             return Discovery.connectToNode(client);
         });
         client.on("data", function (chunk) {
-            var msgs = chunk.toString().split("\n");
-            console.log("MSGS: ", msgs);
-            if (!chunk.toString().includes("\n")) {
-                Utils.sanitizeChunk(client, "localhost", chunk);
+            var fullString = chunk.toString();
+            var msgs = fullString.split("\n");
+            if (!fullString.includes("\n")) {
+                Utils.sanitizeString(client, fullString, false);
             }
             else {
-                msgs.forEach(function (msg) {
-                    msg != "" &&
-                        Utils.routeMessage(msg, client, true, client.address()["address"]);
-                });
+                for (var i = 0; i < msgs.length; i++) {
+                    var msg = msgs[i];
+                    if (i == 0) {
+                        var completedMessage = Utils.sanitizeString(client, msg, true);
+                        console.log("COMPLETED MESSAGE:");
+                        Utils.routeMessage(completedMessage, client, client.address()["address"]);
+                    }
+                    else if (i == msgs.length - 1) {
+                        msg != "" && Utils.sanitizeString(client, msg, false);
+                    }
+                    else {
+                        Utils.routeMessage(msg, client, client.address()["address"]);
+                    }
+                }
             }
         });
         client.on("end", function () {
@@ -33,5 +43,5 @@ function startClients() {
         });
     });
 }
-exports.startClients = startClients;
+exports.startClient = startClient;
 //# sourceMappingURL=client.js.map

@@ -58,17 +58,11 @@ export function getPeers(socket: Net.Socket) {
 }
 
 export function updatePeers(socket: Net.Socket, response: Object) {
-	console.log("PEERS BEFORE UPDATE: ", globalThis.peers);
+	console.log("PEERS BEFORE UPDATE: ", globalThis.peers.size);
 	const newPeers: Array<string> = response["data"]["peers"];
-	newPeers.forEach((newPeer) => {
-		globalThis.peers.add(newPeer);
-		(async () => {
-			const newPeerEntry = {};
-			newPeerEntry[newPeer] = [];
-			await Utils.DB.merge("peers", newPeerEntry);
-		})();
-	});
-	console.log("PEERS AFTER UPDATE: ", globalThis.peers);
+	Utils.updateDBWithPeers(true, newPeers);
+	setTimeout(async () => {console.log(await Utils.DB.get("peers"))}, 7000);
+	console.log("PEERS AFTER UPDATE: ", globalThis.peers.size);
 }
 export function sendPeers(client: Net.Socket, peer: string, response: Object) {
 	const peersArray = [];

@@ -92,26 +92,20 @@ function getPeers(socket) {
 exports.getPeers = getPeers;
 function updatePeers(socket, response) {
     var _this = this;
-    console.log("PEERS BEFORE UPDATE: ", globalThis.peers);
+    console.log("PEERS BEFORE UPDATE: ", globalThis.peers.size);
     var newPeers = response["data"]["peers"];
-    newPeers.forEach(function (newPeer) {
-        globalThis.peers.add(newPeer);
-        (function () { return __awaiter(_this, void 0, void 0, function () {
-            var newPeerEntry;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        newPeerEntry = {};
-                        newPeerEntry[newPeer] = [];
-                        return [4, Utils.DB.merge("peers", newPeerEntry)];
-                    case 1:
-                        _a.sent();
-                        return [2];
-                }
-            });
-        }); })();
-    });
-    console.log("PEERS AFTER UPDATE: ", globalThis.peers);
+    Utils.updateDBWithPeers(true, newPeers);
+    setTimeout(function () { return __awaiter(_this, void 0, void 0, function () { var _a, _b; return __generator(this, function (_c) {
+        switch (_c.label) {
+            case 0:
+                _b = (_a = console).log;
+                return [4, Utils.DB.get("peers")];
+            case 1:
+                _b.apply(_a, [_c.sent()]);
+                return [2];
+        }
+    }); }); }, 7000);
+    console.log("PEERS AFTER UPDATE: ", globalThis.peers.size);
 }
 exports.updatePeers = updatePeers;
 function sendPeers(client, peer, response) {
