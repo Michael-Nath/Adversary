@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "canonicalize": "^1.0.8",
-    "level-ts": "^2.1.0"
+    "level-ts": "^2.1.0",
+    "node-gyp-build": "^4.4.0"
   },
   "scripts": {
     "test": "jest"

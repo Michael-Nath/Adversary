@@ -24,16 +24,26 @@ function startServer() {
             agent: "test agent"
         };
         socket.on("data", function (chunk) {
-            var msgs = chunk.toString().split("\n");
+            var fullString = chunk.toString();
+            var msgs = fullString.split("\n");
             console.log("MSGS: ", msgs);
-            if (!chunk.toString().includes("\n")) {
-                Utils.sanitizeChunk(socket, "localhost", chunk);
+            if (!fullString.includes("\n")) {
+                Utils.sanitizeString(socket, "localhost", fullString, false);
             }
             else {
-                msgs.forEach(function (msg) {
-                    msg != "" &&
+                for (var i = 0; i < msgs.length; i++) {
+                    var msg = msgs[i];
+                    if (i == 0) {
+                        var completedMessage = Utils.sanitizeString(socket, "localhost", msg, true);
+                        Utils.routeMessage(completedMessage, socket, false, socket.address()["address"]);
+                    }
+                    else if (i == msgs.length - 1) {
+                        msg != "" && Utils.sanitizeString(socket, "localhost", msg, false);
+                    }
+                    else {
                         Utils.routeMessage(msg, socket, false, socket.address()["address"]);
-                });
+                    }
+                }
             }
         });
         socket.on("end", function () {

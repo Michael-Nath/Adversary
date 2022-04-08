@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.sanitizeChunk = exports.routeMessage = exports.resetStore = exports.initializeStore = exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.DB = exports.WELCOME_ERROR = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
+exports.sanitizeString = exports.routeMessage = exports.resetStore = exports.initializeStore = exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.DB = exports.WELCOME_ERROR = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
 var level_ts_1 = require("level-ts");
 var Discovery = require("./discovery");
 var canonicalize = require("canonicalize");
@@ -159,15 +159,14 @@ function routeMessage(msg, socket, weInitiated, peer) {
     }
 }
 exports.routeMessage = routeMessage;
-function sanitizeChunk(socket, peer, chunk) {
-    var str = chunk.toString();
+function sanitizeString(socket, peer, str, willComplete) {
     globalThis.peerStatuses[peer]["buffer"] += str;
-    if (str.charAt(str.length - 1) == "\n") {
+    if (willComplete) {
         var message = globalThis.peerStatuses[peer]["buffer"];
         globalThis.peerStatuses[peer]["buffer"] = "";
         return message;
     }
     return "";
 }
-exports.sanitizeChunk = sanitizeChunk;
+exports.sanitizeString = sanitizeString;
 //# sourceMappingURL=utils.js.map

@@ -46,15 +46,23 @@ export function startServer() {
 		// Discovery.getPeers(socket);
 
 		socket.on("data", (chunk) => {
-			const msgs = chunk.toString().split("\n");
+			const fullString = chunk.toString()
+			const msgs = fullString.split("\n");
 			console.log("MSGS: ", msgs)
-			if (!chunk.toString().includes("\n")) {
-				Utils.sanitizeChunk(socket, "localhost", chunk)
+			if (!fullString.includes("\n")) {
+				Utils.sanitizeString(socket, "localhost", fullString, false)
 			} else {
-				msgs.forEach((msg) => {
-					msg != "" &&
+				for (let i = 0; i < msgs.length; i++) {
+					const msg = msgs[i]
+					if (i == 0) {
+						const completedMessage = Utils.sanitizeString(socket, "localhost", msg, true)
+						Utils.routeMessage(completedMessage, socket, false, socket.address()["address"]);
+					}else if (i == msgs.length - 1) {
+						msg != "" && Utils.sanitizeString(socket, "localhost", msg, false)
+					}else {
 						Utils.routeMessage(msg, socket, false, socket.address()["address"]);
-				});
+					}
+				}
 			}
 		});
 

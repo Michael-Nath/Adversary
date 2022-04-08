@@ -121,10 +121,11 @@ export function routeMessage(
 			Discovery.updatePeers(socket, response);
 	}
 }
-export function sanitizeChunk(socket, peer, chunk) {
-	const str: string = chunk.toString();
+export function sanitizeString(socket, peer, str, willComplete) {
+	// const str: string = chunk.toString();
 	globalThis.peerStatuses[peer]["buffer"] += str;
-	if (str.charAt(str.length - 1) == "\n") {
+	// str.charAt(str.length - 1) == "\n"
+	if (willComplete) {
 		const message = globalThis.peerStatuses[peer]["buffer"]
 		globalThis.peerStatuses[peer]["buffer"] = "";
 		return message;
