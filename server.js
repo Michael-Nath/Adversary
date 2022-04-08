@@ -18,16 +18,10 @@ function startServer() {
     server.on("connection", function (socket) {
         console.log("A new connection has been established.");
         console.log(globalThis.peers);
-        var helloMessage = {
-            type: "hello",
-            version: "0.8.0",
-            agent: "test agent"
-        };
-        socket.write(canonicalize(helloMessage) + "\n");
+        socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
         Discovery.getPeers(socket);
         socket.on("data", function (chunk) {
             var msgs = chunk.toString().split("\n");
-            console.log("MSGS: ", msgs);
             if (!chunk.toString().includes("\n")) {
                 Utils.sanitizeChunk(socket, "localhost", chunk);
             }

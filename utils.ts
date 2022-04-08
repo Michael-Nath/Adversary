@@ -17,14 +17,12 @@ export const TYPE_ERROR = "Unsupported message type received\n";
 export const FORMAT_ERROR = "Invalid message format\n";
 export const WELCOME_ERROR = "Must send hello message first.";
 export const HELLO_MESSAGE: Types.HelloMessage = {
-	type: "Adversary Node",
+	type: "hello",
 	version: "0.8.0",
-	agent: "test agent",
+	agent: "Adversary",
 };
 export const DB = new level(DATABASE_PATH);
 
-// TODO:
-// Make data property of ValidationMessage work with JSON
 export const PORT = 18018;
 
 export const ALLOWABLE_TYPES: Set<string> = new Set([
@@ -59,7 +57,7 @@ export function sendErrorMessage(client: Socket, error: string) {
 		error: error,
 	};
 	client.write(canonicalize(errorMessage));
-	client.end();
+	client.destroy();
 }
 
 // Returns JSON that validates the message and adds a corresponding error message if necessary
@@ -68,7 +66,6 @@ export function validateMessage(
 	peer: string
 ): Types.ValidationMessage {
 	const json = {} as Types.ValidationMessage;
-
 	try {
 		const parsedMessage: JSON = JSON.parse(message);
 		json["data"] = parsedMessage;
@@ -102,7 +99,6 @@ export async function resetStore() {
 export function routeMessage(
 	msg: string,
 	socket: Socket,
-	weInitiated: boolean,
 	peer: string
 ) {
 	const response = validateMessage(msg, peer);
@@ -110,9 +106,8 @@ export function routeMessage(
 		sendErrorMessage(socket, response["error"]["error"]);
 		return;
 	}
-
 	if (response["data"]["type"] == "hello")
-		Discovery.getHello(socket, peer, response, weInitiated);
+		Discovery.getHello(socket, peer, response);
 	else if (response["data"]["type"] == "peers")
 		Discovery.updatePeers(socket, response);
 	else if ((response["data"]["type"] = "getpeers"))

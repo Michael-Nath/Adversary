@@ -42,7 +42,6 @@ export function startServer() {
 
 		socket.on("data", (chunk) => {
 			const msgs = chunk.toString().split("\n");
-			console.log("MSGS: ", msgs)
 			if (!chunk.toString().includes("\n")) {
 				Utils.sanitizeChunk(socket, "localhost", chunk)
 			} else {
