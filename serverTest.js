@@ -19,6 +19,5 @@ grader.connect({ port: port, host: host }, function () {
 });
 grader.on("data", function (chunk) {
     console.log("received from server: ".concat(chunk.toString()));
-    grader.write(canonicalize(peersMessage));
 });
 //# sourceMappingURL=serverTest.js.map

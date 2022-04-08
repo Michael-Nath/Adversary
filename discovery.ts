@@ -30,7 +30,7 @@ export function connectToNode(client: Net.Socket) {
 	};
 	// FIRST STEP OF TCP HANDSHAKE - CLIENT SEEKS SERVER EXISTENCE
 
-	client.write(canonicalize(helloMessage)+"\n");
+	client.write(canonicalize(helloMessage) + "\n");
 	// getPeers(client);
 }
 
@@ -41,7 +41,6 @@ export function getHello(
 	weInitiated: boolean
 ) {
 	let peerExists;
-	const list = weInitiated ? "clientPeers" : "serverPeers";
 	(async () => {
 		peerExists = peer in globalThis.peers;
 	})();
@@ -50,7 +49,7 @@ export function getHello(
 			type: "error",
 			error: Utils.HELLO_ERROR,
 		};
-		socket.write(canonicalize(errorMessage)+"\n");
+		socket.write(canonicalize(errorMessage) + "\n");
 		socket.destroy();
 	} else {
 		(async () => {
@@ -61,15 +60,8 @@ export function getHello(
 				version: "0.8.0",
 				agent: "Adversary Node",
 			};
-
-			if (!peerExists) {
-				socket.write(canonicalize(helloMessage)+'\n');
-				getPeers(socket);
-			}
-			await Utils.DB.merge(list, newPeerEntry);
+			await Utils.DB.merge("peers", newPeerEntry);
 			globalThis.peers.add(peer);
-			console.log(globalThis.peers);
-			console.log(await Utils.DB.get(list));
 		})();
 	}
 }
@@ -78,25 +70,39 @@ export function getPeers(socket: Net.Socket) {
 	const getPeersMessage = {
 		type: "getpeers",
 	};
-	socket.write(canonicalize(getPeersMessage)+"\n");
+	socket.write(canonicalize(getPeersMessage) + "\n");
 }
 
 export function updatePeers(socket: Net.Socket, response: Object) {
+	console.log("PEERS BEFORE UPDATE: ", globalThis.peers);
 	const newPeers: Array<string> = response["data"]["peers"];
 	newPeers.forEach((newPeer) => {
 		globalThis.peers.add(newPeer);
+		(async () => {
+			const newPeerEntry = {};
+			newPeerEntry[newPeer] = [];
+			await Utils.DB.merge("peers", newPeerEntry);
+		})();
 	});
+	console.log("PEERS AFTER UPDATE: ", globalThis.peers);
 }
 export function sendPeers(client: Net.Socket, peer: string, response: Object) {
 	const peersArray = [];
-	// globalThis.peers.forEach((peer) => {
-	// 	peersArray.push(`${peer}:${Utils.PORT}`);
-	// });
-	// const peersMessage = {
-	// 	type: "peers",
-	// 	peers: peersArray,
-	// };
-	// client.write(canonicalize(peersMessage)+"\n");
+	let peers;
+	(async () => {
+		peers = await Utils.DB.get("peers");
+	})();
+
+	globalThis.peers.forEach((peer) => {
+		let peerString = peer;
+		if (!peer.includes(":")) peerString += `:${Utils.PORT}`;
+		peersArray.push(peerString);
+	});
+	const peersMessage = {
+		type: "peers",
+		peers: peersArray,
+	};
+	client.write(canonicalize(peersMessage) + "\n");
 }
 
 export function obtainBootstrappingPeers(): Set<string> | void {

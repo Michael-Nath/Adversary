@@ -37,13 +37,8 @@ export function startServer() {
 		console.log(globalThis.peers);
 		// Now that a TCP connection has been established, the server can send data to
 		// the client by writing to its socket.
-		const helloMessage: types.HelloMessage = {
-			type: "hello",
-			version: "0.8.0",
-			agent: "test agent",
-		};
-
-		// Discovery.getPeers(socket);
+		socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
+		Discovery.getPeers(socket);
 
 		socket.on("data", (chunk) => {
 			const msgs = chunk.toString().split("\n");

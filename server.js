@@ -23,6 +23,8 @@ function startServer() {
             version: "0.8.0",
             agent: "test agent"
         };
+        socket.write(canonicalize(helloMessage) + "\n");
+        Discovery.getPeers(socket);
         socket.on("data", function (chunk) {
             var msgs = chunk.toString().split("\n");
             console.log("MSGS: ", msgs);
