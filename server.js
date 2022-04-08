@@ -19,7 +19,6 @@ function startServer() {
     server.on("connection", function (socket) {
         console.log("A new connection has been established.");
         console.log(globalThis.peers);
-<<<<<<< HEAD
         socket.id = (0, nanoid_1.nanoid)();
         globalThis.peerStatuses[socket.id] = { buffer: "" };
         socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
@@ -29,30 +28,22 @@ function startServer() {
             var msgs = fullString.split("\n");
             console.log("MSGS: ", msgs);
             if (!fullString.includes("\n")) {
-                Utils.sanitizeString(socket, "localhost", fullString, false);
-=======
-        socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
-        Discovery.getPeers(socket);
-        socket.on("data", function (chunk) {
-            var msgs = chunk.toString().split("\n");
-            if (!chunk.toString().includes("\n")) {
-                Utils.sanitizeChunk(socket, "localhost", chunk);
->>>>>>> 54fd9c1079308d2b5a91cea87bd33edfed888544
+                Utils.sanitizeString(socket, fullString, false);
             }
             else {
                 for (var i = 0; i < msgs.length; i++) {
                     var msg = msgs[i];
                     if (i == 0) {
-                        var completedMessage = Utils.sanitizeString(socket, "localhost", msg, true);
+                        var completedMessage = Utils.sanitizeString(socket, msg, true);
                         console.log("COMPLETED MESSAGE:");
                         console.log(completedMessage);
-                        Utils.routeMessage(completedMessage, socket, false, socket.address()["address"]);
+                        Utils.routeMessage(completedMessage, socket, socket.address()["address"]);
                     }
                     else if (i == msgs.length - 1) {
-                        msg != "" && Utils.sanitizeString(socket, "localhost", msg, false);
+                        msg != "" && Utils.sanitizeString(socket, msg, false);
                     }
                     else {
-                        Utils.routeMessage(msg, socket, false, socket.address()["address"]);
+                        Utils.routeMessage(msg, socket, socket.address()["address"]);
                     }
                 }
             }

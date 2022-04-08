@@ -113,7 +113,7 @@ export function routeMessage(
 	else if ((response["data"]["type"] = "getpeers"))
 		Discovery.sendPeers(socket, peer, response);
 }
-export function sanitizeString(socket, peer, str, willComplete) {
+export function sanitizeString(socket, str, willComplete) {
 	// const str: string = chunk.toString();
 	globalThis.peerStatuses[socket.id]["buffer"] += str;
 	// str.charAt(str.length - 1) == "\n"
