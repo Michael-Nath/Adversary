@@ -80,7 +80,7 @@ function sendErrorMessage(client, error) {
         type: "error",
         error: error
     };
-    client.write(canonicalize(errorMessage));
+    client.write(canonicalize(errorMessage) + "\n");
     client.end();
 }
 exports.sendErrorMessage = sendErrorMessage;
