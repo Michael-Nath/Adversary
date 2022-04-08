@@ -36,7 +36,11 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
+<<<<<<< HEAD
 exports.sanitizeString = exports.routeMessage = exports.resetStore = exports.initializeStore = exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.DB = exports.HELLO_MESSAGE = exports.WELCOME_ERROR = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
+=======
+exports.sanitizeChunk = exports.routeMessage = exports.resetStore = exports.initializeStore = exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.DB = exports.HELLO_MESSAGE = exports.WELCOME_ERROR = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
+>>>>>>> 54fd9c1079308d2b5a91cea87bd33edfed888544
 var level_ts_1 = require("level-ts");
 var Discovery = require("./discovery");
 var canonicalize = require("canonicalize");
@@ -46,9 +50,15 @@ exports.TYPE_ERROR = "Unsupported message type received\n";
 exports.FORMAT_ERROR = "Invalid message format\n";
 exports.WELCOME_ERROR = "Must send hello message first.";
 exports.HELLO_MESSAGE = {
+<<<<<<< HEAD
     type: "Adversary Node",
     version: "0.8.0",
     agent: "test agent"
+=======
+    type: "hello",
+    version: "0.8.0",
+    agent: "Adversary"
+>>>>>>> 54fd9c1079308d2b5a91cea87bd33edfed888544
 };
 exports.DB = new level_ts_1["default"](DATABASE_PATH);
 exports.PORT = 18018;
@@ -81,11 +91,12 @@ function sendErrorMessage(client, error) {
         error: error
     };
     client.write(canonicalize(errorMessage));
-    client.end();
+    client.destroy();
 }
 exports.sendErrorMessage = sendErrorMessage;
 function validateMessage(message, peer) {
     var json = {};
+    console.log("MSG TO PARSE: ", message);
     try {
         var parsedMessage = JSON.parse(message);
         json["data"] = parsedMessage;
@@ -138,7 +149,7 @@ function routeMessage(msg, socket, weInitiated, peer) {
         return;
     }
     if (response["data"]["type"] == "hello")
-        Discovery.getHello(socket, peer, response, weInitiated);
+        Discovery.getHello(socket, peer, response);
     else if (response["data"]["type"] == "peers")
         Discovery.updatePeers(socket, response);
     else if ((response["data"]["type"] = "getpeers"))

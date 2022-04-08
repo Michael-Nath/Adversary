@@ -19,6 +19,7 @@ function startServer() {
     server.on("connection", function (socket) {
         console.log("A new connection has been established.");
         console.log(globalThis.peers);
+<<<<<<< HEAD
         socket.id = (0, nanoid_1.nanoid)();
         globalThis.peerStatuses[socket.id] = { buffer: "" };
         socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
@@ -29,6 +30,14 @@ function startServer() {
             console.log("MSGS: ", msgs);
             if (!fullString.includes("\n")) {
                 Utils.sanitizeString(socket, "localhost", fullString, false);
+=======
+        socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
+        Discovery.getPeers(socket);
+        socket.on("data", function (chunk) {
+            var msgs = chunk.toString().split("\n");
+            if (!chunk.toString().includes("\n")) {
+                Utils.sanitizeChunk(socket, "localhost", chunk);
+>>>>>>> 54fd9c1079308d2b5a91cea87bd33edfed888544
             }
             else {
                 for (var i = 0; i < msgs.length; i++) {

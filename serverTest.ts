@@ -16,7 +16,7 @@ const helloMessage: Types.HelloMessage = {
 const peersMessage = {
     type: "peers",
     peers: ["dionyziz.com:18018"]
-}
+} 
 // const helloMessage = { type: "hello" };
 grader.connect({ port, host }, () => {
 	grader.write(canonicalize(helloMessage)+'\n');

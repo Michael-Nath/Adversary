@@ -51,11 +51,17 @@ export function startServer() {
 		Discovery.getPeers(socket);
 
 		socket.on("data", (chunk) => {
+<<<<<<< HEAD
 			const fullString = chunk.toString()
 			const msgs = fullString.split("\n");
 			console.log("MSGS: ", msgs)
 			if (!fullString.includes("\n")) {
 				Utils.sanitizeString(socket, "localhost", fullString, false)
+=======
+			const msgs = chunk.toString().split("\n");
+			if (!chunk.toString().includes("\n")) {
+				Utils.sanitizeChunk(socket, "localhost", chunk)
+>>>>>>> 54fd9c1079308d2b5a91cea87bd33edfed888544
 			} else {
 				for (let i = 0; i < msgs.length; i++) {
 					const msg = msgs[i]

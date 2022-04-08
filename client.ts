@@ -9,7 +9,6 @@
 const Net = require("net");
 
 import * as Utils from "./utils";
-import * as Types from "./types";
 import * as Discovery from "./discovery";
 
 globalThis.peers = Discovery.obtainBootstrappingPeers() as Set<string>;
@@ -27,10 +26,18 @@ export function startClients() {
 			Discovery.connectToNode(client)
 		);
 		// // The client can also receive data from the server by reading from its socket.
-		client.on("data", (chunk) => Discovery.getHello(client, peer, chunk, true));
-		// client.on("data", (chunk) => Discovery.sendPeers(client, peer, chunk));
-		// client.on("data", (chunk) => Discovery.updatePeers(client, chunk));
-		// client.on("data", (chunk) => console.log(chunk.toString()));
+		client.on("data", (chunk) => {
+			const msgs = chunk.toString().split("\n");
+			console.log("MSGS: ", msgs)
+			if (!chunk.toString().includes("\n")) {
+				Utils.sanitizeChunk(client, "localhost", chunk)
+			} else {
+				msgs.forEach((msg) => {
+					msg != "" &&
+						Utils.routeMessage(msg, client, client.address()["address"]);
+				});
+			}
+		});
 		client.on("end", function () {
 			console.log("Requested an end to the TCP connection");
 		});
