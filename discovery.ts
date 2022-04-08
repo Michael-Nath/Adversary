@@ -19,26 +19,15 @@ declare global {
 }
 
 export function connectToNode(client: Net.Socket) {
-	// If there is no error, the server has accepted the request and created a new
-	// socket dedicated to us.
 	console.log("TCP connection established with the server.");
-	// The client can now send data to the server by writing to its socket.
-	const helloMessage: Types.HelloMessage = {
-		type: "hello",
-		version: "0.8.0",
-		agent: "Adversary Node",
-	};
-	// FIRST STEP OF TCP HANDSHAKE - CLIENT SEEKS SERVER EXISTENCE
-
-	client.write(canonicalize(helloMessage) + "\n");
-	// getPeers(client);
+	client.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
+	getPeers(client);
 }
 
 export function getHello(
 	socket: Net.Socket,
 	peer: string,
 	response: Object,
-	weInitiated: boolean
 ) {
 	let peerExists;
 	(async () => {
@@ -55,11 +44,6 @@ export function getHello(
 		(async () => {
 			const newPeerEntry = {};
 			newPeerEntry[peer] = [];
-			const helloMessage: Types.HelloMessage = {
-				type: "hello",
-				version: "0.8.0",
-				agent: "Adversary Node",
-			};
 			await Utils.DB.merge("peers", newPeerEntry);
 			globalThis.peers.add(peer);
 		})();

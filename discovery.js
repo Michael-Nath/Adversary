@@ -43,15 +43,11 @@ var path = require("path");
 var canonicalize = require("canonicalize");
 function connectToNode(client) {
     console.log("TCP connection established with the server.");
-    var helloMessage = {
-        type: "hello",
-        version: "0.8.0",
-        agent: "Adversary Node"
-    };
-    client.write(canonicalize(helloMessage) + "\n");
+    client.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
+    getPeers(client);
 }
 exports.connectToNode = connectToNode;
-function getHello(socket, peer, response, weInitiated) {
+function getHello(socket, peer, response) {
     var _this = this;
     var peerExists;
     (function () { return __awaiter(_this, void 0, void 0, function () {
@@ -70,17 +66,12 @@ function getHello(socket, peer, response, weInitiated) {
     }
     else {
         (function () { return __awaiter(_this, void 0, void 0, function () {
-            var newPeerEntry, helloMessage;
+            var newPeerEntry;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
                         newPeerEntry = {};
                         newPeerEntry[peer] = [];
-                        helloMessage = {
-                            type: "hello",
-                            version: "0.8.0",
-                            agent: "Adversary Node"
-                        };
                         return [4, Utils.DB.merge("peers", newPeerEntry)];
                     case 1:
                         _a.sent();
