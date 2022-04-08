@@ -44,8 +44,8 @@ export function getHello(
 		(async () => {
 			const newPeerEntry = {};
 			newPeerEntry[peer] = [];
-			await Utils.DB.merge("peers", newPeerEntry);
 			globalThis.connections.add(socket.id);
+			await Utils.DB.merge("peers", newPeerEntry);
 		})();
 	}
 }

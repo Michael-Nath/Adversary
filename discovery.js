@@ -72,10 +72,10 @@ function getHello(socket, peer, response) {
                     case 0:
                         newPeerEntry = {};
                         newPeerEntry[peer] = [];
+                        globalThis.connections.add(socket.id);
                         return [4, Utils.DB.merge("peers", newPeerEntry)];
                     case 1:
                         _a.sent();
-                        globalThis.connections.add(socket.id);
                         return [2];
                 }
             });
