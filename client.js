@@ -7,7 +7,7 @@ var Discovery = require("./discovery");
 var nanoid_1 = require("nanoid");
 function startClient() {
     console.log(peers);
-    globalThis.peers.forEach(function (peer) {
+    globalThis.connections.forEach(function (peer) {
         var client = new Net.Socket();
         client.id = (0, nanoid_1.nanoid)();
         globalThis.peerStatuses[client.id] = { buffer: "" };
@@ -43,6 +43,7 @@ function startClient() {
         });
         client.on("end", function () {
             console.log("Requested an end to the TCP connection");
+            globalThis.connections["delete"](client.id);
         });
     });
 }

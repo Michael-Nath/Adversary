@@ -29,11 +29,11 @@ export function getHello(
 	peer: string,
 	response: Object,
 ) {
-	let peerExists;
+	let connectionExists;
 	(async () => {
-		peerExists = peer in globalThis.peers;
+		connectionExists = peer in globalThis.connections;
 	})();
-	if (!peerExists && !Utils.isValidFirstMessage(response)) {
+	if (!connectionExists && !Utils.isValidFirstMessage(response)) {
 		const errorMessage: Types.ErrorMessage = {
 			type: "error",
 			error: Utils.HELLO_ERROR,
@@ -45,7 +45,7 @@ export function getHello(
 			const newPeerEntry = {};
 			newPeerEntry[peer] = [];
 			await Utils.DB.merge("peers", newPeerEntry);
-			globalThis.peers.add(peer);
+			globalThis.connections.add(socket.id);
 		})();
 	}
 }
@@ -58,29 +58,29 @@ export function getPeers(socket: Net.Socket) {
 }
 
 export function updatePeers(socket: Net.Socket, response: Object) {
-	console.log("PEERS BEFORE UPDATE: ", globalThis.peers.size);
+	async () => {console.log("PEER COUNT BEFORE UPDATE:"); console.log(Object.keys(await Utils.DB.get("peers")).length)};
 	const newPeers: Array<string> = response["data"]["peers"];
-	Utils.updateDBWithPeers(true, newPeers);
-	setTimeout(async () => {console.log(await Utils.DB.get("peers"))}, 7000);
-	console.log("PEERS AFTER UPDATE: ", globalThis.peers.size);
+	Utils.updateDBWithPeers(newPeers);
+	setTimeout(async () => {console.log("PEER COUNT AFTER UPDATE:"); console.log(Object.keys(await Utils.DB.get("peers")).length)}, 5000);
 }
 export function sendPeers(client: Net.Socket, peer: string, response: Object) {
 	const peersArray = [];
 	let peers;
 	(async () => {
 		peers = await Utils.DB.get("peers");
+		console.log("PEERS:");
+		console.log(peers);
+		for (peer in peers) {
+			let peerString = peer;
+			if (!peer.includes(":")) peerString += `:${Utils.PORT}`;
+			peersArray.push(peerString);
+		}
+		const peersMessage = {
+			type: "peers",
+			peers: peersArray,
+		};
+		client.write(canonicalize(peersMessage) + "\n");
 	})();
-
-	globalThis.peers.forEach((peer) => {
-		let peerString = peer;
-		if (!peer.includes(":")) peerString += `:${Utils.PORT}`;
-		peersArray.push(peerString);
-	});
-	const peersMessage = {
-		type: "peers",
-		peers: peersArray,
-	};
-	client.write(canonicalize(peersMessage) + "\n");
 }
 
 export function obtainBootstrappingPeers(): Set<string> | void {

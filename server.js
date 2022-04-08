@@ -8,15 +8,12 @@ var nanoid_1 = require("nanoid");
 var canonicalize = require("canonicalize");
 function startServer() {
     var server = new Net.Server();
-    globalThis.peers.forEach(function (peer) {
-        globalThis.peerStatuses[peer] = { buffer: "" };
-    });
     server.listen(Utils.PORT, function () {
         console.log("Server listening for connection requests on socket localhost:".concat(Utils.PORT, "."));
     });
     server.on("connection", function (socket) {
         console.log("A new connection has been established.");
-        console.log(globalThis.peers);
+        console.log(globalThis.connections);
         socket.id = (0, nanoid_1.nanoid)();
         globalThis.peerStatuses[socket.id] = { buffer: "" };
         socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
@@ -48,7 +45,8 @@ function startServer() {
         });
         socket.on("end", function () {
             console.log("Closing connection with the client");
-            console.log(globalThis.peers);
+            globalThis.connections["delete"](socket.id);
+            console.log(globalThis.connections);
         });
         socket.on("error", function (err) {
             console.log("Error: ".concat(err));

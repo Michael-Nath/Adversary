@@ -15,7 +15,7 @@ import { nanoid } from 'nanoid'
 
 export function startClient() {
 	console.log(peers);
-	globalThis.peers.forEach((peer) => {
+	globalThis.connections.forEach((peer) => {
 		// Create a new TCP client.
 		const client = new Net.Socket();
 		client.id = nanoid()
@@ -54,6 +54,7 @@ export function startClient() {
 		});
 		client.on("end", function () {
 			console.log("Requested an end to the TCP connection");
+			globalThis.connections.delete(client.id)
 		});
 	});
 }

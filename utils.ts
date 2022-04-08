@@ -62,8 +62,8 @@ export function sendErrorMessage(client: Socket, error: string) {
 
 // Returns JSON that validates the message and adds a corresponding error message if necessary
 export function validateMessage(
+	socket,
 	message: string,
-	peer: string
 ): Types.ValidationMessage {
 	const json = {} as Types.ValidationMessage;
 	try {
@@ -73,7 +73,7 @@ export function validateMessage(
 			json["error"] = { type: "error", error: TYPE_ERROR };
 			return json;
 		}
-		if (parsedMessage["type"] != "hello" && !globalThis.peers.has(peer)) {
+		if (parsedMessage["type"] != "hello" && !globalThis.connections.has(socket.id)) {
 			json["error"] = { type: "error", error: WELCOME_ERROR };
 			return json;
 		}
@@ -103,7 +103,7 @@ export function routeMessage(
 	socket: Socket,
 	peer: string
 ) {
-	const response = validateMessage(msg, peer);
+	const response = validateMessage(socket, msg);
 	if (response["error"]) {
 		sendErrorMessage(socket, response["error"]["error"]);
 		return;
@@ -127,13 +127,10 @@ export function sanitizeString(socket, str, willComplete) {
 	return "";
 }
 
-export function updateDBWithPeers(shouldUpdateGlobalThis, peers: Set<string> | Array<string>) {
+export function updateDBWithPeers(peers: Set<string> | Array<string>) {
 	let peersObject = {}
 	peers.forEach((newPeer) => {
 		peersObject[newPeer] = []
-		if (shouldUpdateGlobalThis) {
-			globalThis.peers.add(newPeer);
-		}
 	});
 	(async () => {
 		await DB.merge("peers", peersObject);

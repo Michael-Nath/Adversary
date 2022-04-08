@@ -84,7 +84,7 @@ function sendErrorMessage(client, error) {
     client.end();
 }
 exports.sendErrorMessage = sendErrorMessage;
-function validateMessage(message, peer) {
+function validateMessage(socket, message) {
     var json = {};
     try {
         var parsedMessage = JSON.parse(message);
@@ -93,7 +93,7 @@ function validateMessage(message, peer) {
             json["error"] = { type: "error", error: exports.TYPE_ERROR };
             return json;
         }
-        if (parsedMessage["type"] != "hello" && !globalThis.peers.has(peer)) {
+        if (parsedMessage["type"] != "hello" && !globalThis.connections.has(socket.id)) {
             json["error"] = { type: "error", error: exports.WELCOME_ERROR };
             return json;
         }
@@ -138,7 +138,7 @@ function resetStore() {
 }
 exports.resetStore = resetStore;
 function routeMessage(msg, socket, peer) {
-    var response = validateMessage(msg, peer);
+    var response = validateMessage(socket, msg);
     if (response["error"]) {
         sendErrorMessage(socket, response["error"]["error"]);
         return;
@@ -161,14 +161,11 @@ function sanitizeString(socket, str, willComplete) {
     return "";
 }
 exports.sanitizeString = sanitizeString;
-function updateDBWithPeers(shouldUpdateGlobalThis, peers) {
+function updateDBWithPeers(peers) {
     var _this = this;
     var peersObject = {};
     peers.forEach(function (newPeer) {
         peersObject[newPeer] = [];
-        if (shouldUpdateGlobalThis) {
-            globalThis.peers.add(newPeer);
-        }
     });
     (function () { return __awaiter(_this, void 0, void 0, function () {
         return __generator(this, function (_a) {
