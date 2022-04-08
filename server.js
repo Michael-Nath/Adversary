@@ -4,6 +4,7 @@ exports.startServer = void 0;
 var Net = require("net");
 var Utils = require("./utils");
 var Discovery = require("./discovery");
+var nanoid_1 = require("nanoid");
 var canonicalize = require("canonicalize");
 function startServer() {
     var server = new Net.Server();
@@ -18,12 +19,9 @@ function startServer() {
     server.on("connection", function (socket) {
         console.log("A new connection has been established.");
         console.log(globalThis.peers);
-        var helloMessage = {
-            type: "hello",
-            version: "0.8.0",
-            agent: "test agent"
-        };
-        socket.write(canonicalize(helloMessage) + "\n");
+        socket.id = (0, nanoid_1.nanoid)();
+        globalThis.peerStatuses[socket.id] = { buffer: "" };
+        socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
         Discovery.getPeers(socket);
         socket.on("data", function (chunk) {
             var fullString = chunk.toString();
@@ -37,6 +35,8 @@ function startServer() {
                     var msg = msgs[i];
                     if (i == 0) {
                         var completedMessage = Utils.sanitizeString(socket, "localhost", msg, true);
+                        console.log("COMPLETED MESSAGE:");
+                        console.log(completedMessage);
                         Utils.routeMessage(completedMessage, socket, false, socket.address()["address"]);
                     }
                     else if (i == msgs.length - 1) {

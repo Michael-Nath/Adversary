@@ -120,16 +120,11 @@ export function routeMessage(
 }
 export function sanitizeString(socket, peer, str, willComplete) {
 	// const str: string = chunk.toString();
-	globalThis.peerStatuses[peer]["buffer"] += str;
-<<<<<<< HEAD
+	globalThis.peerStatuses[socket.id]["buffer"] += str;
 	// str.charAt(str.length - 1) == "\n"
 	if (willComplete) {
-		const message = globalThis.peerStatuses[peer]["buffer"]
-=======
-	if (str.charAt(str.length - 1) == "\n") {
-		const message = globalThis.peerStatuses[peer]["buffer"];
->>>>>>> c22755ee993c70704050e1f6d65d63857bd49d51
-		globalThis.peerStatuses[peer]["buffer"] = "";
+		const message = globalThis.peerStatuses[socket.id]["buffer"]
+		globalThis.peerStatuses[socket.id]["buffer"] = "";
 		return message;
 	}
 	return "";

@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.sanitizeString = exports.routeMessage = exports.resetStore = exports.initializeStore = exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.DB = exports.WELCOME_ERROR = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
+exports.sanitizeString = exports.routeMessage = exports.resetStore = exports.initializeStore = exports.validateMessage = exports.sendErrorMessage = exports.isValidFirstMessage = exports.BOOTSTRAPPING_PEERS = exports.ALLOWABLE_TYPES = exports.PORT = exports.DB = exports.HELLO_MESSAGE = exports.WELCOME_ERROR = exports.FORMAT_ERROR = exports.TYPE_ERROR = exports.HELLO_ERROR = void 0;
 var level_ts_1 = require("level-ts");
 var Discovery = require("./discovery");
 var canonicalize = require("canonicalize");
@@ -45,6 +45,11 @@ exports.HELLO_ERROR = "";
 exports.TYPE_ERROR = "Unsupported message type received\n";
 exports.FORMAT_ERROR = "Invalid message format\n";
 exports.WELCOME_ERROR = "Must send hello message first.";
+exports.HELLO_MESSAGE = {
+    type: "Adversary Node",
+    version: "0.8.0",
+    agent: "test agent"
+};
 exports.DB = new level_ts_1["default"](DATABASE_PATH);
 exports.PORT = 18018;
 exports.ALLOWABLE_TYPES = new Set([
@@ -141,10 +146,10 @@ function routeMessage(msg, socket, weInitiated, peer) {
 }
 exports.routeMessage = routeMessage;
 function sanitizeString(socket, peer, str, willComplete) {
-    globalThis.peerStatuses[peer]["buffer"] += str;
+    globalThis.peerStatuses[socket.id]["buffer"] += str;
     if (willComplete) {
-        var message = globalThis.peerStatuses[peer]["buffer"];
-        globalThis.peerStatuses[peer]["buffer"] = "";
+        var message = globalThis.peerStatuses[socket.id]["buffer"];
+        globalThis.peerStatuses[socket.id]["buffer"] = "";
         return message;
     }
     return "";

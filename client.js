@@ -4,7 +4,6 @@ exports.startClients = void 0;
 var Net = require("net");
 var Utils = require("./utils");
 var Discovery = require("./discovery");
-globalThis.peerStatuses = {};
 globalThis.peers = Discovery.obtainBootstrappingPeers();
 function startClients() {
     globalThis.peerStatuses = {};

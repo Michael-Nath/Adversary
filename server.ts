@@ -9,7 +9,14 @@ import * as Net from "net";
 import * as Utils from "./utils";
 import * as types from "./types";
 import * as Discovery from "./discovery";
+import { nanoid } from 'nanoid'
 const canonicalize = require("canonicalize");
+
+declare module "net" {
+    interface Socket {
+        id: string;
+    }
+}
 
 export function startServer() {
 	// cononicalize(json) takes in a JSON and returns another JSON
@@ -35,6 +42,9 @@ export function startServer() {
 	server.on("connection", function (socket) {
 		console.log("A new connection has been established.");
 		console.log(globalThis.peers);
+		
+		socket.id = nanoid()
+		globalThis.peerStatuses[socket.id] = { buffer: "" };
 		// Now that a TCP connection has been established, the server can send data to
 		// the client by writing to its socket.
 		socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
@@ -51,6 +61,8 @@ export function startServer() {
 					const msg = msgs[i]
 					if (i == 0) {
 						const completedMessage = Utils.sanitizeString(socket, "localhost", msg, true)
+						console.log("COMPLETED MESSAGE:");
+						console.log(completedMessage)
 						Utils.routeMessage(completedMessage, socket, false, socket.address()["address"]);
 					}else if (i == msgs.length - 1) {
 						msg != "" && Utils.sanitizeString(socket, "localhost", msg, false)

@@ -16,6 +16,8 @@ var peersMessage = {
 };
 grader.connect({ port: port, host: host }, function () {
     grader.write(canonicalize(helloMessage) + '\n');
+    grader.write("{\"type\":\"ge");
+    setTimeout(function () { grader.write("tpeers\"}\n{\"type\":\"getpeers\"}\n"); }, 3000);
 });
 grader.on("data", function (chunk) {
     console.log("received from server: ".concat(chunk.toString()));
