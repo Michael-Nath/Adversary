@@ -81,7 +81,6 @@ function sendErrorMessage(client, error) {
 exports.sendErrorMessage = sendErrorMessage;
 function validateMessage(message, peer) {
     var json = {};
-    console.log(message);
     try {
         var parsedMessage = JSON.parse(message);
         json["data"] = parsedMessage;
@@ -89,7 +88,7 @@ function validateMessage(message, peer) {
             json["error"] = { type: "error", error: exports.TYPE_ERROR };
             return json;
         }
-        if (parsedMessage["type"] != "hello" && !(peer in globalThis.peers)) {
+        if (parsedMessage["type"] != "hello" && !globalThis.peers.has(peer)) {
             json["error"] = { type: "error", error: exports.WELCOME_ERROR };
             return json;
         }
@@ -105,27 +104,13 @@ function validateMessage(message, peer) {
 exports.validateMessage = validateMessage;
 function initializeStore() {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, _b, _c, _d;
-        return __generator(this, function (_e) {
-            switch (_e.label) {
-                case 0: return [4, exports.DB.exists("clientPeers")];
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4, exports.DB.exists("peers")];
                 case 1:
-                    if (!(_e.sent())) {
-                        exports.DB.put("clientPeers", {});
+                    if (!(_a.sent())) {
+                        exports.DB.put("peers", {});
                     }
-                    return [4, exports.DB.exists("serverPeers")];
-                case 2:
-                    if (!(_e.sent())) {
-                        exports.DB.put("serverPeers", {});
-                    }
-                    _b = (_a = console).log;
-                    return [4, exports.DB.get("clientPeers")];
-                case 3:
-                    _b.apply(_a, [_e.sent()]);
-                    _d = (_c = console).log;
-                    return [4, exports.DB.get("serverPeers")];
-                case 4:
-                    _d.apply(_c, [_e.sent()]);
                     return [2];
             }
         });
@@ -135,8 +120,7 @@ exports.initializeStore = initializeStore;
 function resetStore() {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
-            exports.DB.del("clientPeers");
-            exports.DB.del("serverPeers");
+            exports.DB.del("peers");
             return [2];
         });
     });
@@ -144,19 +128,16 @@ function resetStore() {
 exports.resetStore = resetStore;
 function routeMessage(msg, socket, weInitiated, peer) {
     var response = validateMessage(msg, peer);
-    console.log(response);
     if (response["error"]) {
         sendErrorMessage(socket, response["error"]["error"]);
         return;
     }
-    switch (response["data"]["type"]) {
-        case "hello":
-            Discovery.getHello(socket, peer, response, weInitiated);
-        case "getpeers":
-            Discovery.sendPeers(socket, peer, response);
-        case "peers":
-            Discovery.updatePeers(socket, response);
-    }
+    if (response["data"]["type"] == "hello")
+        Discovery.getHello(socket, peer, response, weInitiated);
+    else if (response["data"]["type"] == "peers")
+        Discovery.updatePeers(socket, response);
+    else if ((response["data"]["type"] = "getpeers"))
+        Discovery.sendPeers(socket, peer, response);
 }
 exports.routeMessage = routeMessage;
 function sanitizeString(socket, peer, str, willComplete) {

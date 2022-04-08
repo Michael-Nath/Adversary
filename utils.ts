@@ -16,6 +16,11 @@ export const HELLO_ERROR = "";
 export const TYPE_ERROR = "Unsupported message type received\n";
 export const FORMAT_ERROR = "Invalid message format\n";
 export const WELCOME_ERROR = "Must send hello message first.";
+export const HELLO_MESSAGE: Types.HelloMessage = {
+	type: "Adversary Node",
+	version: "0.8.0",
+	agent: "test agent",
+};
 export const DB = new level(DATABASE_PATH);
 
 // TODO:
@@ -63,7 +68,7 @@ export function validateMessage(
 	peer: string
 ): Types.ValidationMessage {
 	const json = {} as Types.ValidationMessage;
-	console.log(message);
+
 	try {
 		const parsedMessage: JSON = JSON.parse(message);
 		json["data"] = parsedMessage;
@@ -71,7 +76,7 @@ export function validateMessage(
 			json["error"] = { type: "error", error: TYPE_ERROR };
 			return json;
 		}
-		if (parsedMessage["type"] != "hello" && !(peer in globalThis.peers)) {
+		if (parsedMessage["type"] != "hello" && !globalThis.peers.has(peer)) {
 			json["error"] = { type: "error", error: WELCOME_ERROR };
 			return json;
 		}
@@ -85,19 +90,13 @@ export function validateMessage(
 }
 
 export async function initializeStore() {
-	if (!(await DB.exists("clientPeers"))) {
-		DB.put("clientPeers", {});
+	if (!(await DB.exists("peers"))) {
+		DB.put("peers", {});
 	}
-	if (!(await DB.exists("serverPeers"))) {
-		DB.put("serverPeers", {});
-	}
-	console.log(await DB.get("clientPeers"));
-	console.log(await DB.get("serverPeers"));
 }
 
 export async function resetStore() {
-	DB.del("clientPeers");
-	DB.del("serverPeers");
+	DB.del("peers");
 }
 
 export function routeMessage(
@@ -107,28 +106,31 @@ export function routeMessage(
 	peer: string
 ) {
 	const response = validateMessage(msg, peer);
-	console.log(response);
 	if (response["error"]) {
 		sendErrorMessage(socket, response["error"]["error"]);
 		return;
 	}
-	switch (response["data"]["type"]) {
-		case "hello":
-			Discovery.getHello(socket, peer, response, weInitiated);
-		case "getpeers":
-			Discovery.sendPeers(socket, peer, response);
-		case "peers":
-			Discovery.updatePeers(socket, response);
-	}
+
+	if (response["data"]["type"] == "hello")
+		Discovery.getHello(socket, peer, response, weInitiated);
+	else if (response["data"]["type"] == "peers")
+		Discovery.updatePeers(socket, response);
+	else if ((response["data"]["type"] = "getpeers"))
+		Discovery.sendPeers(socket, peer, response);
 }
 export function sanitizeString(socket, peer, str, willComplete) {
 	// const str: string = chunk.toString();
 	globalThis.peerStatuses[peer]["buffer"] += str;
+<<<<<<< HEAD
 	// str.charAt(str.length - 1) == "\n"
 	if (willComplete) {
 		const message = globalThis.peerStatuses[peer]["buffer"]
+=======
+	if (str.charAt(str.length - 1) == "\n") {
+		const message = globalThis.peerStatuses[peer]["buffer"];
+>>>>>>> c22755ee993c70704050e1f6d65d63857bd49d51
 		globalThis.peerStatuses[peer]["buffer"] = "";
 		return message;
 	}
-	return ""
+	return "";
 }
