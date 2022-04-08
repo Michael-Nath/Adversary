@@ -54,7 +54,6 @@ exports.connectToNode = connectToNode;
 function getHello(socket, peer, response, weInitiated) {
     var _this = this;
     var peerExists;
-    var list = weInitiated ? "clientPeers" : "serverPeers";
     (function () { return __awaiter(_this, void 0, void 0, function () {
         return __generator(this, function (_a) {
             peerExists = peer in globalThis.peers;
@@ -71,9 +70,9 @@ function getHello(socket, peer, response, weInitiated) {
     }
     else {
         (function () { return __awaiter(_this, void 0, void 0, function () {
-            var newPeerEntry, helloMessage, _a, _b;
-            return __generator(this, function (_c) {
-                switch (_c.label) {
+            var newPeerEntry, helloMessage;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
                     case 0:
                         newPeerEntry = {};
                         newPeerEntry[peer] = [];
@@ -82,19 +81,10 @@ function getHello(socket, peer, response, weInitiated) {
                             version: "0.8.0",
                             agent: "Adversary Node"
                         };
-                        if (!peerExists) {
-                            socket.write(canonicalize(helloMessage) + '\n');
-                            getPeers(socket);
-                        }
-                        return [4, Utils.DB.merge(list, newPeerEntry)];
+                        return [4, Utils.DB.merge("peers", newPeerEntry)];
                     case 1:
-                        _c.sent();
+                        _a.sent();
                         globalThis.peers.add(peer);
-                        console.log(globalThis.peers);
-                        _b = (_a = console).log;
-                        return [4, Utils.DB.get(list)];
-                    case 2:
-                        _b.apply(_a, [_c.sent()]);
                         return [2];
                 }
             });
@@ -110,14 +100,54 @@ function getPeers(socket) {
 }
 exports.getPeers = getPeers;
 function updatePeers(socket, response) {
+    var _this = this;
+    console.log("PEERS BEFORE UPDATE: ", globalThis.peers);
     var newPeers = response["data"]["peers"];
     newPeers.forEach(function (newPeer) {
         globalThis.peers.add(newPeer);
+        (function () { return __awaiter(_this, void 0, void 0, function () {
+            var newPeerEntry;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        newPeerEntry = {};
+                        newPeerEntry[newPeer] = [];
+                        return [4, Utils.DB.merge("peers", newPeerEntry)];
+                    case 1:
+                        _a.sent();
+                        return [2];
+                }
+            });
+        }); })();
     });
+    console.log("PEERS AFTER UPDATE: ", globalThis.peers);
 }
 exports.updatePeers = updatePeers;
 function sendPeers(client, peer, response) {
+    var _this = this;
     var peersArray = [];
+    var peers;
+    (function () { return __awaiter(_this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4, Utils.DB.get("peers")];
+                case 1:
+                    peers = _a.sent();
+                    return [2];
+            }
+        });
+    }); })();
+    globalThis.peers.forEach(function (peer) {
+        var peerString = peer;
+        if (!peer.includes(":"))
+            peerString += ":".concat(Utils.PORT);
+        peersArray.push(peerString);
+    });
+    var peersMessage = {
+        type: "peers",
+        peers: peersArray
+    };
+    client.write(canonicalize(peersMessage) + "\n");
 }
 exports.sendPeers = sendPeers;
 function obtainBootstrappingPeers() {
