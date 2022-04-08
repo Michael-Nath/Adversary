@@ -6,12 +6,13 @@ var Utils = require("./utils");
 var Discovery = require("./discovery");
 var nanoid_1 = require("nanoid");
 function startClient() {
-    globalThis.peerStatuses = {};
     console.log(peers);
     globalThis.peers.forEach(function (peer) {
         var client = new Net.Socket();
         client.id = (0, nanoid_1.nanoid)();
         globalThis.peerStatuses[client.id] = { buffer: "" };
+        console.log("CLIENT ID:");
+        console.log(client.id);
         client.connect({ port: Utils.PORT, host: peer }, function () {
             return Discovery.connectToNode(client);
         });
@@ -33,6 +34,8 @@ function startClient() {
                         msg != "" && Utils.sanitizeString(client, msg, false);
                     }
                     else {
+                        console.log("RECEIVED MSG:");
+                        console.log(msg);
                         Utils.routeMessage(msg, client, client.address()["address"]);
                     }
                 }

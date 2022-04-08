@@ -56,8 +56,8 @@ export function sendErrorMessage(client: Socket, error: string) {
 		type: "error",
 		error: error,
 	};
-	client.write(canonicalize(errorMessage));
-	client.destroy();
+	client.write(canonicalize(errorMessage) + "\n");
+	client.end();
 }
 
 // Returns JSON that validates the message and adds a corresponding error message if necessary

@@ -8,7 +8,6 @@ var nanoid_1 = require("nanoid");
 var canonicalize = require("canonicalize");
 function startServer() {
     var server = new Net.Server();
-    globalThis.peerStatuses = {};
     globalThis.peers.forEach(function (peer) {
         globalThis.peerStatuses[peer] = { buffer: "" };
     });

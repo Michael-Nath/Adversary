@@ -14,13 +14,14 @@ import { nanoid } from 'nanoid'
 
 
 export function startClient() {
-	globalThis.peerStatuses = {};
 	console.log(peers);
 	globalThis.peers.forEach((peer) => {
 		// Create a new TCP client.
 		const client = new Net.Socket();
 		client.id = nanoid()
 		globalThis.peerStatuses[client.id] = { buffer: "" };
+		console.log("CLIENT ID:");
+		console.log(client.id);
 		// Send a connection request to the server.
 		client.connect({ port: Utils.PORT, host: peer }, () =>
 			Discovery.connectToNode(client)
@@ -44,6 +45,8 @@ export function startClient() {
 					}else if (i == msgs.length - 1) {
 						msg != "" && Utils.sanitizeString(client, msg, false)
 					}else {
+						console.log("RECEIVED MSG:")
+						console.log(msg)
 						Utils.routeMessage(msg, client, client.address()["address"]);
 					}
 				}

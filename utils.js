@@ -81,7 +81,7 @@ function sendErrorMessage(client, error) {
         error: error
     };
     client.write(canonicalize(errorMessage));
-    client.destroy();
+    client.end();
 }
 exports.sendErrorMessage = sendErrorMessage;
 function validateMessage(message, peer) {

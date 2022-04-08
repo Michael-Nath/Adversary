@@ -24,7 +24,6 @@ export function startServer() {
 	// Use net.createServer() in your code. This is just for illustration purpose.
 	// Create a new TCP server.
 	const server: Net.Server = new Net.Server();
-	globalThis.peerStatuses = {};
 	globalThis.peers.forEach((peer) => {
 		globalThis.peerStatuses[peer] = { buffer: "" };
 	});
