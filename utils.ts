@@ -93,7 +93,9 @@ export async function initializeStore() {
 }
 
 export async function resetStore() {
-	DB.del("peers");
+	if (await DB.exists("peers")) {
+		DB.del("peers");
+	}
 }
 
 export function routeMessage(
@@ -123,4 +125,17 @@ export function sanitizeString(socket, str, willComplete) {
 		return message;
 	}
 	return "";
+}
+
+export function updateDBWithPeers(shouldUpdateGlobalThis, peers: Set<string> | Array<string>) {
+	let peersObject = {}
+	peers.forEach((newPeer) => {
+		peersObject[newPeer] = []
+		if (shouldUpdateGlobalThis) {
+			globalThis.peers.add(newPeer);
+		}
+	});
+	(async () => {
+		await DB.merge("peers", peersObject);
+	})();
 }
