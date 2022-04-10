@@ -6,6 +6,8 @@ import * as Discovery from "./discovery";
 globalThis.peers = Discovery.obtainBootstrappingPeers() as Set<string>;
 Utils.updateDBWithPeers(false, globalThis.peers);
 globalThis.peerStatuses = {};
+// Utils.resetStore()
+// Utils.initializeStore()
+startClient();
 
-// startClient();
 startServer();
