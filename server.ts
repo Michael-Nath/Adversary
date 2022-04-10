@@ -24,9 +24,6 @@ export function startServer() {
 	// Use net.createServer() in your code. This is just for illustration purpose.
 	// Create a new TCP server.
 	const server: Net.Server = new Net.Server();
-	globalThis.peers.forEach((peer) => {
-		globalThis.peerStatuses[peer] = { buffer: "" };
-	});
 	// The server listens to a socket for a client to make a connection request.
 	// Think of a socket as an end point.
 	server.listen(Utils.PORT, function () {
@@ -39,7 +36,7 @@ export function startServer() {
 	// socket dedicated to that client.
 	server.on("connection", function (socket) {
 		console.log("A new connection has been established.");
-		console.log(globalThis.peers);
+		console.log(globalThis.connections);
 		
 		socket.id = nanoid()
 		globalThis.peerStatuses[socket.id] = { buffer: "" };
@@ -75,7 +72,8 @@ export function startServer() {
 		// ends the connection.
 		socket.on("end", function () {
 			console.log("Closing connection with the client");
-			console.log(globalThis.peers);
+			globalThis.connections.delete(socket.id)
+			console.log(globalThis.connections);
 		});
 
 		// Don't forget to catch error, for your own sake.

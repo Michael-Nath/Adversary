@@ -20,8 +20,10 @@ const peersMessage = {
 // const helloMessage = { type: "hello" };
 grader.connect({ port, host }, () => {
 	grader.write(canonicalize(helloMessage)+'\n');
+	// grader.write(canonicalize(helloMessage)+'\n' + "{\"type\":\"ge" + "tpeers\"}\n{\"type\":\"getpeers\"}\n");
 	grader.write("{\"type\":\"ge")
 	// setTimeout(() => {grader.write("tpeers\"}\n{\"agent\":\"Grader Node\",\"type\":\"hello\",\"version\":\"0.8.0\"}\n")}, 3000);
+	
 	setTimeout(() => {grader.write("tpeers\"}\n{\"type\":\"getpeers\"}\n")}, 3000);
 
 });
