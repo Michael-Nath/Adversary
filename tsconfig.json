@@ -2,7 +2,8 @@
 	"compilerOptions": {
 		"module": "commonjs",
 		"removeComments": true,
-		"sourceMap": true
+		"sourceMap": true,
+		"outDir": "src/"
 	},
 	"compileOnSave": true,
 	"include": ["*"]
