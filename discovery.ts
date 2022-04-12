@@ -46,7 +46,6 @@ export function getHello(
 			newPeerEntry[peer] = [];
 			globalThis.connections.add(socket.id);
 			await Utils.DB.merge("peers", newPeerEntry);
-			globalThis.peers.add(socket.id);
 		})();
 	}
 }

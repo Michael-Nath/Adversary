@@ -14,7 +14,6 @@ import { nanoid } from 'nanoid'
 
 
 export function startClient() {
-	console.log(peers);
 	globalThis.connections.forEach((peer) => {
 		// Create a new TCP client.
 		const client = new Net.Socket();

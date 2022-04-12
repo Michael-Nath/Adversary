@@ -8,6 +8,5 @@ Utils.updateDBWithPeers(globalThis.connections);
 globalThis.peerStatuses = {};
 // Utils.resetStore()
 // Utils.initializeStore()
-// startClient();
-
 startServer();
+startClient();
