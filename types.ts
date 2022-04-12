@@ -14,6 +14,7 @@ export interface ValidationMessage {
 	data: Object;
 }
 
+
 export interface Message {
 	type: string;
 }

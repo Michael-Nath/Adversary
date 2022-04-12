@@ -1,10 +1,21 @@
+// tsconfig.json
 {
 	"compilerOptions": {
+		"target": "es2017",
+		"types": ["node", "jest"],
+		"allowJs": true,
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"forceConsistentCasingInFileNames": true,
 		"module": "commonjs",
-		"removeComments": true,
-		"sourceMap": true,
-		"outDir": "src/"
+		"moduleResolution": "node",
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"baseUrl": ".",
+		"noFallthroughCasesInSwitch": true,
+		"outDir": "dist"
 	},
 	"compileOnSave": true,
-	"include": ["*"]
+	"include": ["."]
 }

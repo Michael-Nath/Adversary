@@ -9,17 +9,16 @@ import * as Net from "net";
 import * as Utils from "./utils";
 import * as types from "./types";
 import * as Discovery from "./discovery";
-import { nanoid } from 'nanoid'
-const canonicalize = require("canonicalize");
+import { nanoid } from "nanoid";
+const canonicalize = require("canonicalize"); // cononicalize(json) takes in a JSON and returns another JSON
 
 declare module "net" {
-    interface Socket {
-        id: string;
-    }
+	interface Socket {
+		id: string;
+	}
 }
 
 export function startServer() {
-	// cononicalize(json) takes in a JSON and returns another JSON
 
 	// Use net.createServer() in your code. This is just for illustration purpose.
 	// Create a new TCP server.
@@ -28,7 +27,9 @@ export function startServer() {
 	// Think of a socket as an end point.
 	server.listen(Utils.PORT, function () {
 		console.log(
-			`Server listening for connection requests on socket localhost:${Utils.PORT}.`
+			`Server listening for connection requests on socket ${
+				server.address()["address"]
+			}:${Utils.PORT}.`
 		);
 	});
 
@@ -37,8 +38,8 @@ export function startServer() {
 	server.on("connection", function (socket) {
 		console.log("A new connection has been established.");
 		console.log(globalThis.connections);
-		
-		socket.id = nanoid()
+
+		socket.id = nanoid();
 		globalThis.peerStatuses[socket.id] = { buffer: "" };
 		// Now that a TCP connection has been established, the server can send data to
 		// the client by writing to its socket.
@@ -46,22 +47,26 @@ export function startServer() {
 		Discovery.getPeers(socket);
 
 		socket.on("data", (chunk) => {
-			const fullString = chunk.toString()
+			const fullString = chunk.toString();
 			const msgs = fullString.split("\n");
-			console.log("MSGS: ", msgs)
+			console.log("MSGS: ", msgs);
 			if (!fullString.includes("\n")) {
-				Utils.sanitizeString(socket, fullString, false)
+				Utils.sanitizeString(socket, fullString, false);
 			} else {
 				for (let i = 0; i < msgs.length; i++) {
-					const msg = msgs[i]
+					const msg = msgs[i];
 					if (i == 0) {
-						const completedMessage = Utils.sanitizeString(socket, msg, true)
+						const completedMessage = Utils.sanitizeString(socket, msg, true);
 						console.log("COMPLETED MESSAGE:");
-						console.log(completedMessage)
-						Utils.routeMessage(completedMessage, socket, socket.address()["address"]);
-					}else if (i == msgs.length - 1) {
-						msg != "" && Utils.sanitizeString(socket, msg, false)
-					}else {
+						console.log(completedMessage);
+						Utils.routeMessage(
+							completedMessage,
+							socket,
+							socket.address()["address"]
+						);
+					} else if (i == msgs.length - 1) {
+						msg != "" && Utils.sanitizeString(socket, msg, false);
+					} else {
 						Utils.routeMessage(msg, socket, socket.address()["address"]);
 					}
 				}
@@ -72,7 +77,7 @@ export function startServer() {
 		// ends the connection.
 		socket.on("end", function () {
 			console.log("Closing connection with the client");
-			globalThis.connections.delete(socket.id)
+			globalThis.connections.delete(socket.id);
 			console.log(globalThis.connections);
 		});
 

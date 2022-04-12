@@ -16,11 +16,11 @@ export const HELLO_ERROR = "";
 export const TYPE_ERROR = "Unsupported message type received\n";
 export const FORMAT_ERROR = "Invalid message format\n";
 export const WELCOME_ERROR = "Must send hello message first.";
-export const HELLO_MESSAGE: Types.HelloMessage = {
+export const HELLO_MESSAGE: Types.HelloMessage = canonicalize({
 	type: "hello",
 	version: "0.8.0",
 	agent: "Adversary",
-};
+});
 export const DB = new level(DATABASE_PATH);
 
 export const PORT = 18018;
@@ -62,8 +62,8 @@ export function sendErrorMessage(client: Socket, error: string) {
 
 // Returns JSON that validates the message and adds a corresponding error message if necessary
 export function validateMessage(
-	socket,
-	message: string,
+	socket: Socket,
+	message: string
 ): Types.ValidationMessage {
 	const json = {} as Types.ValidationMessage;
 	try {
@@ -73,7 +73,10 @@ export function validateMessage(
 			json["error"] = { type: "error", error: TYPE_ERROR };
 			return json;
 		}
-		if (parsedMessage["type"] != "hello" && !globalThis.connections.has(socket.id)) {
+		if (
+			parsedMessage["type"] != "hello" &&
+			!globalThis.connections.has(socket.id)
+		) {
 			json["error"] = { type: "error", error: WELCOME_ERROR };
 			return json;
 		}
@@ -98,11 +101,7 @@ export async function resetStore() {
 	}
 }
 
-export function routeMessage(
-	msg: string,
-	socket: Socket,
-	peer: string
-) {
+export function routeMessage(msg: string, socket: Socket, peer: string) {
 	const response = validateMessage(socket, msg);
 	if (response["error"]) {
 		sendErrorMessage(socket, response["error"]["error"]);
@@ -120,7 +119,7 @@ export function sanitizeString(socket, str, willComplete) {
 	globalThis.peerStatuses[socket.id]["buffer"] += str;
 	// str.charAt(str.length - 1) == "\n"
 	if (willComplete) {
-		const message = globalThis.peerStatuses[socket.id]["buffer"]
+		const message = globalThis.peerStatuses[socket.id]["buffer"];
 		globalThis.peerStatuses[socket.id]["buffer"] = "";
 		return message;
 	}
@@ -128,9 +127,9 @@ export function sanitizeString(socket, str, willComplete) {
 }
 
 export function updateDBWithPeers(peers: Set<string> | Array<string>) {
-	let peersObject = {}
+	let peersObject = {};
 	peers.forEach((newPeer) => {
-		peersObject[newPeer] = []
+		peersObject[newPeer] = [];
 	});
 	(async () => {
 		await DB.merge("peers", peersObject);

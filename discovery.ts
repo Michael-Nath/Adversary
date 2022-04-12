@@ -86,7 +86,7 @@ export function sendPeers(client: Net.Socket, peer: string, response: Object) {
 
 export function obtainBootstrappingPeers(): Set<string> | void {
 	try {
-		const data = fs.readFileSync(path.join(__dirname, "peers.txt"), {
+		const data = fs.readFileSync(path.join(__dirname, "../peers.txt"), {
 			encoding: "utf8",
 		});
 		return new Set(data.split(/\r?\n/));
