@@ -98,6 +98,7 @@ export async function initializeStore() {
 	}
 }
 
+
 export async function resetStore() {
 	if (await DB.exists("peers")) {
 		DB.del("peers");
