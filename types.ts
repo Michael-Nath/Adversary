@@ -14,7 +14,6 @@ export interface ValidationMessage {
 	data: Object;
 }
 
-
 export interface Message {
 	type: string;
 }
@@ -26,4 +25,29 @@ export interface ErrorMessage extends Message {
 export interface HelloMessage extends Message {
 	version: string;
 	agent: string;
+}
+
+export interface TransactionInput {
+	outpoint: { txid: string; index: number };
+	sig: string;
+}
+
+export interface TransactionOutput {
+	value: number;
+	pubkey: string;
+}
+
+export interface Transaction {
+	type: "transaction";
+	inputs: [TransactionInput];
+	outputs: [TransactionOutput];
+}
+
+export interface Block {
+	type: "block";
+	txids: [string];
+	nonce: string;
+	previd: string;
+	miner?: string;
+	note?: string;
 }

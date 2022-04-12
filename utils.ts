@@ -101,11 +101,18 @@ export async function initializeStore() {
 	if (!(await DB.exists("peers"))) {
 		DB.put("peers", {});
 	}
+	if (!(await DB.exists("objects"))) {
+		DB.put("objects", {});
+	}
 }
+
 
 export async function resetStore() {
 	if (await DB.exists("peers")) {
 		DB.del("peers");
+	}
+	if (await DB.exists("objects")) {
+		DB.del("objects");
 	}
 }
 
