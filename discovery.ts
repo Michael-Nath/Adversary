@@ -19,7 +19,7 @@ declare global {
 
 export function connectToNode(client: Net.Socket) {
 	console.log("TCP connection established with the server.");
-	client.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
+	client.write(Utils.HELLO_MESSAGE + "\n");
 	getPeers(client);
 }
 
@@ -66,8 +66,8 @@ export function sendPeers(client: Net.Socket, peer: string, response: Object) {
 	let peers;
 	(async () => {
 		peers = await Utils.DB.get("peers");
-		console.log("PEERS:");
-		console.log(peers);
+		// console.log("PEERS:");
+		// console.log(peers);
 		for (peer in peers) {
 			let peerString = peer;
 			if (!peer.includes(":")) peerString += `:${Utils.PORT}`;

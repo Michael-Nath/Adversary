@@ -43,7 +43,7 @@ export function startServer() {
 		globalThis.peerStatuses[socket.id] = { buffer: "" };
 		// Now that a TCP connection has been established, the server can send data to
 		// the client by writing to its socket.
-		socket.write(canonicalize(Utils.HELLO_MESSAGE) + "\n");
+		socket.write(Utils.HELLO_MESSAGE + "\n");
 		Discovery.getPeers(socket);
 
 		socket.on("data", (chunk) => {
@@ -59,7 +59,7 @@ export function startServer() {
 					// String before first new line will complete the buffer into a complete message
 					if (i == 0) {
 						const completedMessage = Utils.sanitizeString(socket, msg, true);
-						console.log("COMPLETED MESSAGE:");
+						console.log("COMPLETED SERVER MESSAGE:");
 						console.log(completedMessage)
 						Utils.routeMessage(completedMessage, socket, socket.address()["address"]);
 					}else if (i == msgs.length - 1) {

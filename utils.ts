@@ -9,6 +9,7 @@ import * as Types from "./types";
 import level from "level-ts";
 import { Socket } from "net";
 import * as Discovery from "./discovery";
+import { parse } from "path";
 const canonicalize = require("canonicalize");
 const DATABASE_PATH = "./database";
 
@@ -71,8 +72,14 @@ export function validateMessage(
 ): Types.ValidationMessage {
 	const json = {} as Types.ValidationMessage;
 	try {
+		
 		const parsedMessage: JSON = JSON.parse(message);
+		console.log(typeof JSON.parse(message))
+		console.log(typeof parsedMessage)
 		json["data"] = parsedMessage;
+		// console.log("PARSED MESSAGE:")
+		// console.log(parsedMessage)
+		// console.log(typeof(parsedMessage))
 		if (!ALLOWABLE_TYPES.has(parsedMessage["type"])) {
 			json["error"] = { type: "error", error: TYPE_ERROR };
 			return json;
@@ -104,6 +111,8 @@ export async function resetStore() {
 
 export function routeMessage(msg: string, socket: Socket, peer: string) {
 	const response = validateMessage(socket, msg);
+	console.log("RESPONSE:")
+	console.log(response)
 	if (response["error"]) {
 		sendErrorMessage(socket, response["error"]["error"]);
 		return;
