@@ -27,6 +27,14 @@ export interface HelloMessage extends Message {
 	agent: string;
 }
 
+export interface HashObjectMessage extends Message {
+	hash: string;
+}
+
+export interface ObjectMessage extends Message {
+	object: Block | Transaction;
+}
+
 export interface TransactionInput {
 	outpoint: { txid: string; index: number };
 	sig: string;

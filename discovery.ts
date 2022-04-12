@@ -10,6 +10,7 @@ import * as Types from "./types";
 import * as Utils from "./utils";
 import * as fs from "fs";
 import * as path from "path";
+import { listenerCount } from "process";
 const canonicalize = require("canonicalize");
 
 // The port number and hostname of the server.
@@ -61,14 +62,15 @@ export function updatePeers(socket: Net.Socket, response: Object) {
 	Utils.updateDBWithPeers(newPeers);
 	setTimeout(async () => {console.log("PEER COUNT AFTER UPDATE:"); console.log(Object.keys(await Utils.DB.get("peers")).length)}, 5000);
 }
-export function sendPeers(client: Net.Socket, peer: string, response: Object) {
+
+export function sendPeers(client: Net.Socket, response: Object) {
 	const peersArray = [];
 	let peers;
 	(async () => {
 		peers = await Utils.DB.get("peers");
 		// console.log("PEERS:");
 		// console.log(peers);
-		for (peer in peers) {
+		for (let peer in peers) {
 			let peerString = peer;
 			if (!peer.includes(":")) peerString += `:${Utils.PORT}`;
 			peersArray.push(peerString);
@@ -80,6 +82,33 @@ export function sendPeers(client: Net.Socket, peer: string, response: Object) {
 		client.write(canonicalize(peersMessage) + "\n");
 	})();
 }
+
+export function retrieveObject(socket: Net.Socket, response: Object) {
+	const hash = response["data"]["hash"]
+	(async () => {
+		const doesHashExist = (await Utils.doesHashExist(hash))["exists"]
+		if (!doesHashExist) {
+			const getObjectMessage: Types.HashObjectMessage = {type: "getobject", hash: hash}
+			socket.write(canonicalize(getObjectMessage) + "\n")
+	   }
+	})();
+}
+
+export function sendObject(socket: Net.Socket, response: Object) {
+	const hash = response["data"]["hash"]
+	(async () => {
+		const hashResponse = await Utils.doesHashExist(hash)
+		if (hashResponse["exists"]) {
+			const objectMessage: Types.ObjectMessage = {type: "object", object: hashResponse["obj"]}
+			socket.write(canonicalize(objectMessage) + "\n")
+		}
+	})();
+}
+
+export function addObject(socket: Net.Socket, response: Object) {
+	const obj = response["data"]["object"]
+	Utils.updateDBWithObject(obj)
+} 
 
 export function obtainBootstrappingPeers(): Set<string> | void {
 	try {

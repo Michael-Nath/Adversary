@@ -10,6 +10,7 @@ import level from "level-ts";
 import { Socket } from "net";
 import * as Discovery from "./discovery";
 import { parse } from "path";
+import { createObjectID } from "./blockUtils";
 const canonicalize = require("canonicalize");
 const DATABASE_PATH = "./database";
 
@@ -32,6 +33,9 @@ export const ALLOWABLE_TYPES: Set<string> = new Set([
 	"hello",
 	"getpeers",
 	"peers",
+	"ihaveobject",
+	"getobject",
+	"object"
 ]);
 
 export var BOOTSTRAPPING_PEERS: Set<string> = new Set([
@@ -124,12 +128,29 @@ export function routeMessage(msg: string, socket: Socket, peer: string) {
 		sendErrorMessage(socket, response["error"]["error"]);
 		return;
 	}
-	if (response["data"]["type"] == "hello")
-		Discovery.getHello(socket, peer, response);
-	else if (response["data"]["type"] == "peers")
-		Discovery.updatePeers(socket, response);
-	else if ((response["data"]["type"] = "getpeers"))
-		Discovery.sendPeers(socket, peer, response);
+	switch (response["data"]["type"]) {
+		case "hello":
+			Discovery.getHello(socket, peer, response);
+			break;
+		case "peers":
+			Discovery.updatePeers(socket, response);
+			break;
+		case "getpeers":
+			Discovery.sendPeers(socket, response);
+			break;
+		case "ihaveobject":
+			Discovery.retrieveObject(socket, response);
+			break;
+		case "getobject":
+			Discovery.sendObject(socket, response);
+			break;
+		case "object":
+			Discovery.addObject(socket, response);
+			break;
+		default:
+			console.error("Invalid message type");
+			break;
+	}
 }
 export function sanitizeString(socket: Socket, str: string, willComplete: boolean) {
 	// Add str to the buffer
@@ -152,4 +173,22 @@ export function updateDBWithPeers(peers: Set<string> | Array<string>) {
 	(async () => {
 		await DB.merge("peers", peersObject);
 	})();
+}
+
+export function updateDBWithObject(obj: Types.Block | Types.Transaction) {
+	const hashOfObject = createObjectID(obj);
+
+	(async () => {
+		await DB.merge("hashobjects", {hashOfObject: obj});
+	})();	
+}
+
+export async function doesHashExist(hash: string) {
+	const allObjects = await DB.get("hashobjects")
+	for (let DBhash in allObjects) {
+		if (DBhash == hash) {
+			return {exists: true, obj: allObjects[DBhash]}
+		}
+	}
+	return {exists: false}
 }
