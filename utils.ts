@@ -60,10 +60,14 @@ export function sendErrorMessage(client: Socket, error: string) {
 	client.end();
 }
 
+export function doesConnectionExist(socket: Socket) {
+	return globalThis.connections.has(socket.id)
+}
+
 // Returns JSON that validates the message and adds a corresponding error message if necessary
 export function validateMessage(
 	socket: Socket,
-	message: string
+	message: string,
 ): Types.ValidationMessage {
 	const json = {} as Types.ValidationMessage;
 	try {
@@ -73,10 +77,7 @@ export function validateMessage(
 			json["error"] = { type: "error", error: TYPE_ERROR };
 			return json;
 		}
-		if (
-			parsedMessage["type"] != "hello" &&
-			!globalThis.connections.has(socket.id)
-		) {
+		if (parsedMessage["type"] != "hello" && !doesConnectionExist(socket)) {
 			json["error"] = { type: "error", error: WELCOME_ERROR };
 			return json;
 		}
@@ -121,12 +122,12 @@ export function routeMessage(msg: string, socket: Socket, peer: string) {
 	else if ((response["data"]["type"] = "getpeers"))
 		Discovery.sendPeers(socket, peer, response);
 }
-export function sanitizeString(socket, str, willComplete) {
-	// const str: string = chunk.toString();
+export function sanitizeString(socket: Socket, str: string, willComplete: boolean) {
+	// Add str to the buffer
 	globalThis.peerStatuses[socket.id]["buffer"] += str;
-	// str.charAt(str.length - 1) == "\n"
 	if (willComplete) {
-		const message = globalThis.peerStatuses[socket.id]["buffer"];
+		// Return completed message and clear out buffer
+		const message = globalThis.peerStatuses[socket.id]["buffer"]
 		globalThis.peerStatuses[socket.id]["buffer"] = "";
 		return message;
 	}
@@ -134,7 +135,8 @@ export function sanitizeString(socket, str, willComplete) {
 }
 
 export function updateDBWithPeers(peers: Set<string> | Array<string>) {
-	let peersObject = {};
+	let peersObject = {}
+	
 	peers.forEach((newPeer) => {
 		peersObject[newPeer] = [];
 	});
