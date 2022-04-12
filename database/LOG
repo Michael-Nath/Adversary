@@ -1,4 +1,5 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 2022/04/10-18:27:04.152129 30b875000 Recovering log #586
 2022/04/10-18:27:04.152316 30b875000 Level-0 table #588: started
 2022/04/10-18:27:04.152490 30b875000 Level-0 table #588: 266 bytes OK
@@ -10,4 +11,11 @@
 2022/04/11-01:02:19.407476 7f12067fc640 Level-0 table #619: 181 bytes OK
 2022/04/11-01:02:19.409663 7f12067fc640 Delete type=0 #617
 2022/04/11-01:02:19.409742 7f12067fc640 Delete type=3 #616
+>>>>>>> Stashed changes
+=======
+2022/04/10-17:47:49.811888 16e02f000 Recovering log #597
+2022/04/10-17:47:49.812811 16e02f000 Level-0 table #599: started
+2022/04/10-17:47:49.815349 16e02f000 Level-0 table #599: 39801 bytes OK
+2022/04/10-17:47:49.815647 16e02f000 Delete type=3 #595
+2022/04/10-17:47:49.815686 16e02f000 Delete type=0 #597
 >>>>>>> Stashed changes

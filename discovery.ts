@@ -15,7 +15,6 @@ const canonicalize = require("canonicalize");
 // The port number and hostname of the server.
 declare global {
 	var peerStatuses: {};
-	var peers: Set<string>;
 }
 
 export function connectToNode(client: Net.Socket) {
@@ -30,9 +29,8 @@ export function getHello(
 	response: Object,
 ) {
 	let connectionExists;
-	(async () => {
-		connectionExists = peer in globalThis.connections;
-	})();
+	connectionExists = peer in globalThis.connections;
+
 	if (!connectionExists && !Utils.isValidFirstMessage(response)) {
 		const errorMessage: Types.ErrorMessage = {
 			type: "error",

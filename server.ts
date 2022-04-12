@@ -49,24 +49,24 @@ export function startServer() {
 		socket.on("data", (chunk) => {
 			const fullString = chunk.toString();
 			const msgs = fullString.split("\n");
-			console.log("MSGS: ", msgs);
+			console.log("MSGS: ", msgs)
+			// If no new line character, then add full string to the buffer
 			if (!fullString.includes("\n")) {
 				Utils.sanitizeString(socket, fullString, false);
 			} else {
 				for (let i = 0; i < msgs.length; i++) {
-					const msg = msgs[i];
+					const msg = msgs[i]
+					// String before first new line will complete the buffer into a complete message
 					if (i == 0) {
 						const completedMessage = Utils.sanitizeString(socket, msg, true);
 						console.log("COMPLETED MESSAGE:");
-						console.log(completedMessage);
-						Utils.routeMessage(
-							completedMessage,
-							socket,
-							socket.address()["address"]
-						);
-					} else if (i == msgs.length - 1) {
-						msg != "" && Utils.sanitizeString(socket, msg, false);
-					} else {
+						console.log(completedMessage)
+						Utils.routeMessage(completedMessage, socket, socket.address()["address"]);
+					}else if (i == msgs.length - 1) {
+						// String after the last new line will go into the buffer
+						msg != "" && Utils.sanitizeString(socket, msg, false)
+					}else {
+						// Strings in between two newlines are complete and passed through directly
 						Utils.routeMessage(msg, socket, socket.address()["address"]);
 					}
 				}
@@ -77,7 +77,9 @@ export function startServer() {
 		// ends the connection.
 		socket.on("end", function () {
 			console.log("Closing connection with the client");
-			globalThis.connections.delete(socket.id);
+			if (Utils.doesConnectionExist(socket)) {
+				globalThis.connections.delete(socket.id)
+			}
 			console.log(globalThis.connections);
 		});
 

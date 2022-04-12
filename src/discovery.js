@@ -50,12 +50,7 @@ exports.connectToNode = connectToNode;
 function getHello(socket, peer, response) {
     var _this = this;
     var connectionExists;
-    (function () { return __awaiter(_this, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            connectionExists = peer in globalThis.connections;
-            return [2];
-        });
-    }); })();
+    connectionExists = peer in globalThis.connections;
     if (!connectionExists && !Utils.isValidFirstMessage(response)) {
         var errorMessage = {
             type: "error",
