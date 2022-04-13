@@ -38,8 +38,8 @@ export function startClient() {
 					const msg = msgs[i]
 					if (i == 0) {
 						const completedMessage = Utils.sanitizeString(client, msg, true)
-						console.log("COMPLETED MESSAGE:");
-						// console.log(completedMessage)
+						console.log("COMPLETED CLIENT MESSAGE:");
+						console.log(completedMessage)
 						Utils.routeMessage(completedMessage, client, client.address()["address"]);
 					}else if (i == msgs.length - 1) {
 						msg != "" && Utils.sanitizeString(client, msg, false)
