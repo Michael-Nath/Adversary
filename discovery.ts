@@ -11,6 +11,7 @@ import * as Utils from "./utils";
 import * as fs from "fs";
 import * as path from "path";
 import { listenerCount } from "process";
+import { createObjectID } from "./blockUtils";
 const canonicalize = require("canonicalize");
 
 // The port number and hostname of the server.
@@ -83,8 +84,30 @@ export function sendPeers(client: Net.Socket, response: Object) {
 	})();
 }
 
+export function gossipObject(obj: Types.Block | Types.Transaction) {
+	const hashOfObject = createObjectID(obj);
+	let peers;
+	(async () => {
+		peers = await Utils.DB.get("peers");
+		for (let peer in peers) {
+			let peerString = peer;
+			if (peer.includes(":")) peerString = peer.split(":")[0];
+
+			const peerToInformConnection = new Net.Socket();
+			try {
+				peerToInformConnection.connect({ port: Utils.PORT, host: peerString }, () => {
+					peerToInformConnection.write(canonicalize({type: "ihaveobject", objectid: hashOfObject}) + "\n");
+					peerToInformConnection.end();
+				});
+			} catch (err) {
+				console.error(err);
+			}	
+		}
+	})();
+}
+
 export function retrieveObject(socket: Net.Socket, response: Object) {
-	const hash = response["data"]["hash"]
+	const hash = response["data"]["objectid"];
 	(async () => {
 		const doesHashExist = (await Utils.doesHashExist(hash))["exists"]
 		if (!doesHashExist) {
@@ -95,9 +118,11 @@ export function retrieveObject(socket: Net.Socket, response: Object) {
 }
 
 export function sendObject(socket: Net.Socket, response: Object) {
-	const hash = response["data"]["hash"]
+	const hash = response["data"]["objectid"];
+
 	(async () => {
 		const hashResponse = await Utils.doesHashExist(hash)
+		console.log(hashResponse);
 		if (hashResponse["exists"]) {
 			const objectMessage: Types.ObjectMessage = {type: "object", object: hashResponse["obj"]}
 			socket.write(canonicalize(objectMessage) + "\n")
@@ -106,8 +131,10 @@ export function sendObject(socket: Net.Socket, response: Object) {
 }
 
 export function addObject(socket: Net.Socket, response: Object) {
-	const obj = response["data"]["object"]
+	const obj = response["data"]["object"];
 	Utils.updateDBWithObject(obj)
+	//TODO: VERIFY OBJECT
+	gossipObject(obj);
 } 
 
 export function obtainBootstrappingPeers(): Set<string> | void {

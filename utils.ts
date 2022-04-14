@@ -103,19 +103,19 @@ export function validateMessage(
 
 export async function initializeStore() {
 	if (!(await DB.exists("peers"))) {
-		DB.put("peers", {});
+		await DB.put("peers", {});
 	}
-	if (!(await DB.exists("objects"))) {
-		DB.put("objects", {});
+	if (!(await DB.exists("hashobjects"))) {
+		await DB.put("hashobjects", {});
 	}
 }
 
 export async function resetStore() {
 	if (await DB.exists("peers")) {
-		DB.del("peers");
+		await DB.del("peers");
 	}
-	if (await DB.exists("objects")) {
-		DB.del("objects");
+	if (await DB.exists("hashobjects")) {
+		await DB.del("hashobjects");
 	}
 }
 
@@ -180,15 +180,18 @@ export function updateDBWithPeers(peers: Set<string> | Array<string>) {
 
 export function updateDBWithObject(obj: Types.Block | Types.Transaction) {
 	const hashOfObject = createObjectID(obj);
-
+	console.log("Updating Object with Hash:");
+	console.log(hashOfObject);
 	(async () => {
-		await DB.merge("hashobjects", {hashOfObject: obj});
+		await DB.merge("hashobjects", {[hashOfObject]: obj});
 	})();	
 }
 
 export async function doesHashExist(hash: string) {
 	const allObjects = await DB.get("hashobjects")
 	for (let DBhash in allObjects) {
+		console.log("DB HASH:");
+		console.log(DBhash);
 		if (DBhash == hash) {
 			return {exists: true, obj: allObjects[DBhash]}
 		}

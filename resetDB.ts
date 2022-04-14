@@ -1,4 +1,6 @@
 import * as Utils from "./utils"
 
-Utils.resetStore()
-Utils.initializeStore()
+(async () => {
+    await Utils.resetStore()
+    await Utils.initializeStore()
+})();
