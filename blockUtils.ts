@@ -7,3 +7,4 @@ export function createObjectID(object: Block | Transaction): string {
 	const hash = sha256.hash(canonicalizedJSON);
 	return Buffer.from(hash).toString("hex");
 }
+

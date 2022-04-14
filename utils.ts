@@ -9,7 +9,7 @@ import * as Types from "./types";
 import level from "level-ts";
 import type { Socket } from "net";
 import * as Discovery from "./discovery";
-import { parse } from "path";
+import * as ed from "@noble/ed25519";
 import { createObjectID } from "./blockUtils";
 const canonicalize = require("canonicalize");
 const DATABASE_PATH = "./database";
@@ -35,7 +35,7 @@ export const ALLOWABLE_TYPES: Set<string> = new Set([
 	"peers",
 	"ihaveobject",
 	"getobject",
-	"object"
+	"object",
 ]);
 
 export var BOOTSTRAPPING_PEERS: Set<string> = new Set([
@@ -76,10 +76,9 @@ export function validateMessage(
 ): Types.ValidationMessage {
 	const json = {} as Types.ValidationMessage;
 	try {
-		
 		const parsedMessage: JSON = JSON.parse(message);
-		console.log(typeof JSON.parse(message))
-		console.log(typeof parsedMessage)
+		console.log(typeof JSON.parse(message));
+		console.log(typeof parsedMessage);
 		json["data"] = parsedMessage;
 		// console.log("PARSED MESSAGE:")
 		// console.log(parsedMessage)
@@ -121,8 +120,8 @@ export async function resetStore() {
 
 export function routeMessage(msg: string, socket: Socket, peer: string) {
 	const response = validateMessage(socket, msg);
-	console.log("RESPONSE:")
-	console.log(response)
+	console.log("RESPONSE:");
+	console.log(response);
 	if (response["error"]) {
 		sendErrorMessage(socket, response["error"]["error"]);
 		return;
@@ -167,6 +166,116 @@ export function sanitizeString(
 	return "";
 }
 
+export function getUnsignedTransactionFrom(
+	transaction: Types.Transaction
+): Types.Transaction {
+	const unsignedTransaction = transaction;
+	unsignedTransaction["inputs"].forEach((input) => {
+		input.sig = null;
+	});
+	return unsignedTransaction;
+}
+
+function isHex(h) {
+	var a = parseInt(h, 16);
+	return a.toString(16) === h.toLowerCase();
+}
+
+function transactionIsFormattedCorrectly(transaction: Types.Transaction): {} {
+	// input and output key must exist in transaction body
+	if (!("inputs" in transaction) || !("outputs" in transaction)) {
+		return {valid: false, msg: "Error: output and input key must be present in transaction body."}
+	}
+	// each input must contain keys "outpoint" and "sig"
+	// each input must have a signature that is hexadecimal string
+	transaction["inputs"].forEach((input) => {
+		if (!("outpoint" in input) || !("sig" in input)) {
+			return {valid: false, msg: "Error: outpoint and sig key must be present in every input."}
+		}
+		if (!isHex(input.sig)) {
+			return {valid: false, msg: "Error: every signature must be a hexadeciaml decimal."}
+		}
+	});
+
+	transaction["outputs"].forEach((output) => {
+		if (!("pubkey" in output) || !("value" in output)) {
+			return {valid: false, msg: "Error: pubkey and value key must be present in every output."}
+		}
+		if (!isNaN(Number(output["value"])) || output["value"] < 0 || Math.floor(output["value"]) != output["value"]) {
+			return {valid: false, msg: "Error: output of a transaction must be non-negative integer."}
+		}
+		if (!isHex(output["pubkey"])) {
+			return {valid: false, msg: "Error: all public keys must be a hexadecimal string."}
+		}
+	});
+	return {valid: true}
+}
+
+
+export function validateTransaction(
+	transaction: Types.Transaction
+) : {} {
+	const formatResponse = transactionIsFormattedCorrectly(transaction);
+	if (!formatResponse["valid"]) {
+		return formatResponse;
+	}
+	const unsignedTransaction = getUnsignedTransactionFrom(transaction);
+	const inputs: [Types.TransactionInput] = transaction["inputs"];
+	const outputs: [Types.TransactionOutput] = transaction["outputs"];
+	let inputValues = 0;
+	let outputValues = 0;
+	inputs.forEach((input) => {
+		const outpoint: Types.Outpoint = input.outpoint;
+		const response = outpointExists(outpoint);
+		if (!response["exists"]) {
+			return {valid: false, msg: "Error: outpoint does not exist."}
+		}
+		const prevTransactionBody: Types.Transaction = response["obj"];
+		if (outpoint.index >= prevTransactionBody.outputs.length) {
+			return {valid: false, msg: "Error: index provided not does not corresponding to any output of outpoint's transaction body."}
+		}
+		const sigToVerify = Uint8Array.from(Buffer.from(input.sig, "hex"));
+		const pubKey = Uint8Array.from(
+			Buffer.from(prevTransactionBody.outputs[outpoint.index]["pubkey"], "hex")
+		);
+		let isValid;
+		(async () => {
+			isValid = await ed.verify(
+				sigToVerify,
+				JSON.stringify(unsignedTransaction),
+				pubKey
+			);
+			if (!isValid) {
+				return {valid: false, msg: "Error: invalid signature for transaction body"}
+			}
+		})();
+		inputValues += prevTransactionBody.outputs[outpoint.index]["value"];
+	});
+	outputs.forEach((output) => {
+		if (output["value"] < 0 && ) {
+			return {valid: false, msg: "Error: output of a transaction must be non-negative integer"}
+		}
+		outputValues += output["value"];
+	});
+	if (inputValues < outputValues) {
+		return {valid: false, msg: "Error: law of weak conversation is broken in this transaction."}
+	}
+	return {valid: true}
+}
+
+export function outpointExists(outpoint: Types.Outpoint): object {
+	let allIDS;
+	(async () => {
+		allIDS = await DB.get("hashobjects");
+	})();
+	for (let id in allIDS) {
+		if (id == outpoint.txid) {
+			return { exists: true, obj: allIDS[id] };
+		}
+	}
+	return { exists: false };
+}
+
 export function updateDBWithPeers(peers: Set<string> | Array<string>) {
 	let peersObject = {};
 
@@ -182,16 +291,16 @@ export function updateDBWithObject(obj: Types.Block | Types.Transaction) {
 	const hashOfObject = createObjectID(obj);
 
 	(async () => {
-		await DB.merge("hashobjects", {hashOfObject: obj});
-	})();	
+		await DB.merge("hashobjects", { hashOfObject: obj });
+	})();
 }
 
 export async function doesHashExist(hash: string) {
-	const allObjects = await DB.get("hashobjects")
+	const allObjects = await DB.get("hashobjects");
 	for (let DBhash in allObjects) {
 		if (DBhash == hash) {
-			return {exists: true, obj: allObjects[DBhash]}
+			return { exists: true, obj: allObjects[DBhash] };
 		}
 	}
-	return {exists: false}
+	return { exists: false };
 }
