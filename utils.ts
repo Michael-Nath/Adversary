@@ -102,19 +102,19 @@ export function validateMessage(
 
 export async function initializeStore() {
 	if (!(await DB.exists("peers"))) {
-		DB.put("peers", {});
+		await DB.put("peers", {});
 	}
-	if (!(await DB.exists("objects"))) {
-		DB.put("objects", {});
+	if (!(await DB.exists("hashobjects"))) {
+		await DB.put("hashobjects", {});
 	}
 }
 
 export async function resetStore() {
 	if (await DB.exists("peers")) {
-		DB.del("peers");
+		await DB.del("peers");
 	}
-	if (await DB.exists("objects")) {
-		DB.del("objects");
+	if (await DB.exists("hashobjects")) {
+		await DB.del("hashobjects");
 	}
 }
 
@@ -184,37 +184,56 @@ function isHex(h) {
 function transactionIsFormattedCorrectly(transaction: Types.Transaction): {} {
 	// input and output key must exist in transaction body
 	if (!("inputs" in transaction) || !("outputs" in transaction)) {
-		return {valid: false, msg: "Error: output and input key must be present in transaction body."}
+		return {
+			valid: false,
+			msg: "Error: output and input key must be present in transaction body.",
+		};
 	}
 	// each input must contain keys "outpoint" and "sig"
 	// each input must have a signature that is hexadecimal string
 	transaction["inputs"].forEach((input) => {
 		if (!("outpoint" in input) || !("sig" in input)) {
-			return {valid: false, msg: "Error: outpoint and sig key must be present in every input."}
+			return {
+				valid: false,
+				msg: "Error: outpoint and sig key must be present in every input.",
+			};
 		}
 		if (!isHex(input.sig)) {
-			return {valid: false, msg: "Error: every signature must be a hexadeciaml decimal."}
+			return {
+				valid: false,
+				msg: "Error: every signature must be a hexadeciaml decimal.",
+			};
 		}
 	});
 
 	transaction["outputs"].forEach((output) => {
 		if (!("pubkey" in output) || !("value" in output)) {
-			return {valid: false, msg: "Error: pubkey and value key must be present in every output."}
+			return {
+				valid: false,
+				msg: "Error: pubkey and value key must be present in every output.",
+			};
 		}
-		if (!isNaN(Number(output["value"])) || output["value"] < 0 || Math.floor(output["value"]) != output["value"]) {
-			return {valid: false, msg: "Error: output of a transaction must be non-negative integer."}
+		if (
+			!isNaN(Number(output["value"])) ||
+			output["value"] < 0 ||
+			Math.floor(output["value"]) != output["value"]
+		) {
+			return {
+				valid: false,
+				msg: "Error: output of a transaction must be non-negative integer.",
+			};
 		}
 		if (!isHex(output["pubkey"])) {
-			return {valid: false, msg: "Error: all public keys must be a hexadecimal string."}
+			return {
+				valid: false,
+				msg: "Error: all public keys must be a hexadecimal string.",
+			};
 		}
 	});
-	return {valid: true}
+	return { valid: true };
 }
 
-
-export function validateTransaction(
-	transaction: Types.Transaction
-) : {} {
+export function validateTransaction(transaction: Types.Transaction): {} {
 	const formatResponse = transactionIsFormattedCorrectly(transaction);
 	if (!formatResponse["valid"]) {
 		return formatResponse;
@@ -224,15 +243,19 @@ export function validateTransaction(
 	const outputs: [Types.TransactionOutput] = transaction["outputs"];
 	let inputValues = 0;
 	let outputValues = 0;
-	inputs.forEach((input) => {
+	for (let i = 0; i < inputs.length; i++) {
+		const input = inputs[i];
 		const outpoint: Types.Outpoint = input.outpoint;
 		const response = outpointExists(outpoint);
 		if (!response["exists"]) {
-			return {valid: false, msg: "Error: outpoint does not exist."}
+			return { valid: false, msg: "Error: outpoint does not exist." };
 		}
 		const prevTransactionBody: Types.Transaction = response["obj"];
 		if (outpoint.index >= prevTransactionBody.outputs.length) {
-			return {valid: false, msg: "Error: index provided not does not corresponding to any output of outpoint's transaction body."}
+			return {
+				valid: false,
+				msg: "Error: index provided not does not corresponding to any output of outpoint's transaction body.",
+			};
 		}
 		const sigToVerify = Uint8Array.from(Buffer.from(input.sig, "hex"));
 		const pubKey = Uint8Array.from(
@@ -246,21 +269,24 @@ export function validateTransaction(
 				pubKey
 			);
 			if (!isValid) {
-				return {valid: false, msg: "Error: invalid signature for transaction body"}
+				return {
+					valid: false,
+					msg: "Error: invalid signature for transaction body",
+				};
 			}
 		})();
 		inputValues += prevTransactionBody.outputs[outpoint.index]["value"];
-	});
+	}
 	outputs.forEach((output) => {
-		if (output["value"] < 0 && ) {
-			return {valid: false, msg: "Error: output of a transaction must be non-negative integer"}
-		}
 		outputValues += output["value"];
 	});
 	if (inputValues < outputValues) {
-		return {valid: false, msg: "Error: law of weak conversation is broken in this transaction."}
+		return {
+			valid: false,
+			msg: "Error: law of weak conversation is broken in this transaction.",
+		};
 	}
-	return {valid: true}
+	return { valid: true };
 }
 
 export function outpointExists(outpoint: Types.Outpoint): object {
