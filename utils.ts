@@ -7,7 +7,7 @@
  */
 import * as Types from "./types";
 import level from "level-ts";
-import { Socket } from "net";
+import type { Socket } from "net";
 import * as Discovery from "./discovery";
 import { parse } from "path";
 import { createObjectID } from "./blockUtils";
@@ -66,13 +66,13 @@ export function sendErrorMessage(client: Socket, error: string) {
 }
 
 export function doesConnectionExist(socket: Socket) {
-	return globalThis.connections.has(socket.id)
+	return globalThis.connections.has(socket.id);
 }
 
 // Returns JSON that validates the message and adds a corresponding error message if necessary
 export function validateMessage(
 	socket: Socket,
-	message: string,
+	message: string
 ): Types.ValidationMessage {
 	const json = {} as Types.ValidationMessage;
 	try {
@@ -109,7 +109,6 @@ export async function initializeStore() {
 		DB.put("objects", {});
 	}
 }
-
 
 export async function resetStore() {
 	if (await DB.exists("peers")) {
@@ -152,12 +151,16 @@ export function routeMessage(msg: string, socket: Socket, peer: string) {
 			break;
 	}
 }
-export function sanitizeString(socket: Socket, str: string, willComplete: boolean) {
+export function sanitizeString(
+	socket: Socket,
+	str: string,
+	willComplete: boolean
+) {
 	// Add str to the buffer
 	globalThis.peerStatuses[socket.id]["buffer"] += str;
 	if (willComplete) {
 		// Return completed message and clear out buffer
-		const message = globalThis.peerStatuses[socket.id]["buffer"]
+		const message = globalThis.peerStatuses[socket.id]["buffer"];
 		globalThis.peerStatuses[socket.id]["buffer"] = "";
 		return message;
 	}
@@ -165,8 +168,8 @@ export function sanitizeString(socket: Socket, str: string, willComplete: boolea
 }
 
 export function updateDBWithPeers(peers: Set<string> | Array<string>) {
-	let peersObject = {}
-	
+	let peersObject = {};
+
 	peers.forEach((newPeer) => {
 		peersObject[newPeer] = [];
 	});

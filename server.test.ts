@@ -1,25 +1,65 @@
-import { startServer } from "./server";
 import * as Net from "net";
-import * as Utils from "./utils";
-import * as Types from "./types";
-jest.setTimeout(10000)
-const port = 18018;
+import { processChunk } from "./serverUtils";
+import { nanoid } from "nanoid";
+import { getPeers } from "./discovery";
 const host = "localhost";
+const PORT = 18018;
+declare module "net" {
+	interface Socket {
+		id: string;
+	}
+}
+globalThis.peerStatuses = {};
+describe("Grader should be able to connect to server", () => {
+	let serverSocket: Net.Socket;
+	let clientSocket: Net.Socket;
+	beforeAll((done) => {
+		const server = new Net.Server();
+		const client = new Net.Socket();
+		server.listen(PORT, function () {
+			console.log(
+				`Server listening for connection requests on socket ${
+					server.address()["address"]
+				}:${PORT}.`
+			);
+		});
 
-const myPromise = new Promise((resolve, reject) => {
-	const grader = new Net.Socket();
-	grader.connect({ port, host },  () => {
-		const msg = JSON.stringify(Utils.HELLO_MESSAGE)
-		console.log(msg)
-		grader.write(msg);
+		server.on("connection", (socket) => {
+			serverSocket = socket;
+			socket.id = nanoid();
+			globalThis.peerStatuses[socket.id] = { buffer: "" };
+			done();
+		});
+		client.connect({ port: PORT, host: "localhost" }, () => {
+			clientSocket = client;
+		});
 	});
-	grader.on("data", (chunk) => {
-		const msg = chunk.toString()
-		resolve(msg);
-	})
-});
 
+	test("Grader should receive error for sending improperly formatted messages", (done) => {
+		// done();
+		clientSocket.write("hello\n");
+		serverSocket.on("data", (chunk) => {
+			processChunk(chunk, serverSocket);
+		});
+		clientSocket.on("data", (chunk) => {
+			const response = JSON.parse(chunk.toString().trimEnd());
+			expect(response["type"]).toBe("error");
+			done();
+		});
+	});
 
-test("Grader should receive a valid hello message on connecting", async () => {
-	return myPromise.then((res) => expect(res).toBe("smth"));
+	// test("Grader should receive error for not sending hello message first", (done) => {
+	// 	getPeers(clientSocket);
+	// 	serverSocket.on("data", (chunk) => {
+	// 		processChunk(chunk, serverSocket);
+	// 	});
+	// 	clientSocket.on("data", (chunk) => {
+	// 		console.log(chunk.toString());
+	// 	});
+	// });
+
+	afterAll(() => {
+		serverSocket.end();
+		clientSocket.end();
+	});
 });
