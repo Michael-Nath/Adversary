@@ -9,4 +9,4 @@ globalThis.peerStatuses = {};
 // Utils.resetStore()
 // Utils.initializeStore()
 startServer();
-// startClient();
+startClient();

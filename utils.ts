@@ -192,6 +192,8 @@ export async function doesHashExist(hash: string) {
 	for (let DBhash in allObjects) {
 		console.log("DB HASH:");
 		console.log(DBhash);
+		console.log("REAL HASH");
+		console.log(hash);
 		if (DBhash == hash) {
 			return {exists: true, obj: allObjects[DBhash]}
 		}
