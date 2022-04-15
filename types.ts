@@ -28,7 +28,7 @@ export interface HelloMessage extends Message {
 }
 
 export interface HashObjectMessage extends Message {
-	hash: string;
+	objectid: string;
 }
 
 export interface ObjectMessage extends Message {

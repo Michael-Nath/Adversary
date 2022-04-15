@@ -58,19 +58,6 @@ describe("Grader should be able to connect to server", () => {
 		});
 	});
 
-<<<<<<< HEAD
-	// test("Grader should receive error for not sending hello message first", (done) => {
-	// 	getPeers(clientSocket);
-	// 	serverSocket.on("data", (chunk) => {
-	// 		processChunk(chunk, serverSocket);
-	// 	});
-	// 	clientSocket.on("data", (chunk) => {
-	// 		console.log(chunk.toString());
-	// 	});
-	// });
-
-=======
->>>>>>> 5570d2f89e966f5611b42b58eab5e4e91a75382e
 	afterAll(() => {
 		serverSocket.end();
 		clientSocket.end();
