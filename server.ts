@@ -36,8 +36,8 @@ export function startServer() {
 	// When a client requests a connection with the server, the server creates a new
 	// socket dedicated to that client.
 	server.on("connection", function (socket) {
-		console.log("A new connection has been established.");
-		console.log(globalThis.connections);
+		
+		
 
 		socket.id = nanoid();
 		globalThis.peerStatuses[socket.id] = { buffer: "" };
@@ -49,7 +49,7 @@ export function startServer() {
 		socket.on("data", (chunk) => {
 			const fullString = chunk.toString();
 			const msgs = fullString.split("\n");
-			console.log("MSGS: ", msgs)
+			
 			// If no new line character, then add full string to the buffer
 			if (!fullString.includes("\n")) {
 				Utils.sanitizeString(socket, fullString, false);
@@ -59,8 +59,8 @@ export function startServer() {
 					// String before first new line will complete the buffer into a complete message
 					if (i == 0) {
 						const completedMessage = Utils.sanitizeString(socket, msg, true);
-						console.log("COMPLETED SERVER MESSAGE:");
-						console.log(completedMessage)
+						
+						
 						Utils.routeMessage(completedMessage, socket, socket.address()["address"]);
 					}else if (i == msgs.length - 1) {
 						// String after the last new line will go into the buffer
@@ -76,16 +76,16 @@ export function startServer() {
 		// When the client requests to end the TCP connection with the server, the server
 		// ends the connection.
 		socket.on("end", function () {
-			console.log("Closing connection with the client");
+			
 			if (Utils.doesConnectionExist(socket)) {
 				globalThis.connections.delete(socket.id)
 			}
-			console.log(globalThis.connections);
+			
 		});
 
 		// Don't forget to catch error, for your own sake.
 		socket.on("error", function (err) {
-			console.log(`Error: ${err}`);
+			
 		});
 	});
 }

@@ -21,6 +21,4 @@ const dummyTransaction: Transaction = {
 };
 
 const response = validateTransaction(dummyTransaction);
-console.log(response);
 
-// console.log(outpointExists(dummyTransaction["inputs"][0]["outpoint"]));

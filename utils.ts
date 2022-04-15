@@ -77,12 +77,9 @@ export function validateMessage(
 	const json = {} as Types.ValidationMessage;
 	try {
 		const parsedMessage: JSON = JSON.parse(message);
-		console.log(typeof JSON.parse(message));
-		console.log(typeof parsedMessage);
+		
+		
 		json["data"] = parsedMessage;
-		// console.log("PARSED MESSAGE:")
-		// console.log(parsedMessage)
-		// console.log(typeof(parsedMessage))
 		if (!ALLOWABLE_TYPES.has(parsedMessage["type"])) {
 			json["error"] = { type: "error", error: TYPE_ERROR };
 			return json;
@@ -120,8 +117,8 @@ export async function resetStore() {
 
 export function routeMessage(msg: string, socket: Socket, peer: string) {
 	const response = validateMessage(socket, msg);
-	console.log("RESPONSE:");
-	console.log(response);
+	
+	
 	if (response["error"]) {
 		sendErrorMessage(socket, response["error"]["error"]);
 		return;
@@ -143,6 +140,7 @@ export function routeMessage(msg: string, socket: Socket, peer: string) {
 			Discovery.sendObject(socket, response);
 			break;
 		case "object":
+			
 			Discovery.addObject(socket, response, true);
 			break;
 		case "transaction":
@@ -318,8 +316,8 @@ export function updateDBWithPeers(peers: Set<string> | Array<string>) {
 
 export function updateDBWithObject(obj: Types.Block | Types.Transaction) {
 	const hashOfObject = createObjectID(obj);
-	console.log("Updating Object with Hash:");
-	console.log(hashOfObject);
+	
+	
 	(async () => {
 		await DB.merge("hashobjects", {[hashOfObject]: obj});
 	})();	
@@ -328,10 +326,10 @@ export function updateDBWithObject(obj: Types.Block | Types.Transaction) {
 export async function doesHashExist(hash: string) {
 	const allObjects = await DB.get("hashobjects");
 	for (let DBhash in allObjects) {
-		console.log("DB HASH:");
-		console.log(DBhash);
-		console.log("REAL HASH");
-		console.log(hash);
+		
+		
+		
+		
 		if (DBhash == hash) {
 			return { exists: true, obj: allObjects[DBhash] };
 		}

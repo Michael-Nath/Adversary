@@ -22,7 +22,7 @@ declare global {
 }
 
 export function connectToNode(client: Net.Socket) {
-	console.log("TCP connection established with the server.");
+	
 	client.write(Utils.HELLO_MESSAGE + "\n");
 	getPeers(client);
 }
@@ -60,10 +60,8 @@ export function getPeers(socket: Net.Socket) {
 }
 
 export function updatePeers(socket: Net.Socket, response: Object) {
-	async () => {console.log("PEER COUNT BEFORE UPDATE:"); console.log(Object.keys(await Utils.DB.get("peers")).length)};
 	const newPeers: Array<string> = response["data"]["peers"];
 	Utils.updateDBWithPeers(newPeers);
-	setTimeout(async () => {console.log("PEER COUNT AFTER UPDATE:"); console.log(Object.keys(await Utils.DB.get("peers")).length)}, 5000);
 }
 
 export function sendPeers(client: Net.Socket, response: Object) {
@@ -71,8 +69,6 @@ export function sendPeers(client: Net.Socket, response: Object) {
 	let peers;
 	(async () => {
 		peers = await Utils.DB.get("peers");
-		// console.log("PEERS:");
-		// console.log(peers);
 		for (let peer in peers) {
 			let peerString = peer;
 			if (!peer.includes(":")) peerString += `:${Utils.PORT}`;
@@ -94,8 +90,8 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 		for (let peer in peers) {
 			let peerString = peer;
 			if (peer.includes(":")) peerString = peer.split(":")[0];
-			console.log("GOSSIPING TO PEER AT:")
-			console.log(peerString)
+			
+			
 			const peerToInformConnection = new Net.Socket();
 
 			peerToInformConnection.id = nanoid()
@@ -106,12 +102,11 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 					setTimeout(async () => {peerToInformConnection.end();}, 5000);
 				});
 				peerToInformConnection.on("error", function (err) {
-					console.log(`Error: ${err}`);
+					
 				});
 				peerToInformConnection.on("data", (chunk) => {
 					const fullString = chunk.toString()
 					const msgs = fullString.split("\n");
-					// console.log("MSGS: ", msgs)
 					if (!fullString.includes("\n")) {
 						Utils.sanitizeString(peerToInformConnection, fullString, false)
 					} else {
@@ -119,14 +114,14 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 							const msg = msgs[i]
 							if (i == 0) {
 								const completedMessage = Utils.sanitizeString(peerToInformConnection, msg, true)
-								console.log("COMPLETED CLIENT MESSAGE:");
-								console.log(completedMessage)
+								
+								
 								Utils.routeMessage(completedMessage, peerToInformConnection, peerToInformConnection.address()["address"]);
 							}else if (i == msgs.length - 1) {
 								msg != "" && Utils.sanitizeString(peerToInformConnection, msg, false)
 							}else {
-								console.log("RECEIVED MSG:")
-								console.log(msg)
+								
+								
 								Utils.routeMessage(msg, peerToInformConnection, peerToInformConnection.address()["address"]);
 							}
 						}
@@ -138,8 +133,8 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 
 export function retrieveObject(socket: Net.Socket, response: Object) {
 	const hash = response["data"]["objectid"];
-	console.log("THE HASH RESPONSE MSG:")
-	console.log(response);
+	
+	
 	(async () => {
 		const doesHashExist = (await Utils.doesHashExist(hash))["exists"]
 		if (!doesHashExist) {
@@ -151,10 +146,12 @@ export function retrieveObject(socket: Net.Socket, response: Object) {
 
 export function sendObject(socket: Net.Socket, response: Object) {
 	const hash = response["data"]["objectid"];
-	console.log("THE HASH RESPONSE MSG:")
-	console.log(response);
+	
+	
 	(async () => {
 		const hashResponse = await Utils.doesHashExist(hash)
+		
+		console.log("SENDING OBJECT WITH HASH RESPONSE:");
 		console.log(hashResponse);
 		if (hashResponse["exists"]) {
 			const objectMessage: Types.ObjectMessage = {type: "object", object: hashResponse["obj"]}
@@ -171,13 +168,14 @@ export function addObject(socket: Net.Socket, response: Object, withObject: bool
 	//TODO: VERIFY OBJECT
 	(async () => {
 		const hashResponse = await Utils.doesHashExist(createObjectID(obj))
-		console.log("DOES HASH EXIST RESPONSE");
-		console.log(hashResponse)
+		
+		console.log("ADDING OBJECT WITH RESPONSE:");
+		console.log(hashResponse);
 		
 		const validationResponse = Utils.validateTransaction(obj)
 		const isValidTransaction: boolean = obj["type"] == "transaction" && (validationResponse["valid"] || obj["inputs"] == undefined);
 
-		if(!hashResponse["exists"] && (isValidTransaction || obj["type"] == "block")) {
+		if(!hashResponse["exists"] && (isValidTransaction || obj["type"] == "block" || withObject)) {
 			gossipObject(obj);
 		}else if (obj["type"] == "transaction" && !(obj["inputs"] == undefined) && !isValidTransaction) {
 			Utils.sendErrorMessage(socket, validationResponse["msg"])

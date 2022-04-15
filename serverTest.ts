@@ -28,7 +28,7 @@ grader.connect({ port, host }, () => {
 
 });
 grader.on("data", (chunk) => {
-	console.log(`received from server: ${chunk.toString()}`);
+	
     // grader.write(canonicalize(peersMessage))
 	// const response = Utils.validateMessage(chunk.toString(), grader.address()["address"]);
 });

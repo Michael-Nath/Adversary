@@ -17,7 +17,7 @@ describe("Grader should be able to connect to server", () => {
 		const server = new Net.Server();
 		const client = new Net.Socket();
 		server.listen(PORT, function () {
-			console.log(
+			
 				`Server listening for connection requests on socket ${
 					server.address()["address"]
 				}:${PORT}.`
@@ -54,7 +54,7 @@ describe("Grader should be able to connect to server", () => {
 			processChunk(chunk, serverSocket);
 		});
 		clientSocket.on("data", (chunk) => {
-			console.log(chunk.toString());
+			
 		});
 	});
 
