@@ -77,8 +77,6 @@ export function validateMessage(
 	const json = {} as Types.ValidationMessage;
 	try {
 		const parsedMessage: JSON = JSON.parse(message);
-		
-		
 		json["data"] = parsedMessage;
 		if (!ALLOWABLE_TYPES.has(parsedMessage["type"])) {
 			json["error"] = { type: "error", error: TYPE_ERROR };
@@ -183,6 +181,11 @@ function isHex(h) {
 }
 
 function transactionIsFormattedCorrectly(transaction: Types.Transaction): {} {
+	// FOR PSET 2: Coinbase Transactions are always valid
+	if ("height" in transaction) {
+		return { valid: true }
+	}
+
 	// input and output key must exist in transaction body
 	if (!("inputs" in transaction) || !("outputs" in transaction)) {
 		return {
