@@ -39,6 +39,7 @@ export function startServer() {
 	server.on("connection", function (socket) {
 		socket.id = nanoid();
 		globalThis.peerStatuses[socket.id] = { buffer: "" };
+		globalThis.sockets.add(socket);
 		// Now that a TCP connection has been established, the server can send data to
 		// the client by writing to its socket.
 		socket.write(CONSTANTS.HELLO_MESSAGE + "\n");
@@ -76,7 +77,8 @@ export function startServer() {
 		socket.on("end", function () {
 			
 			if (Utils.doesConnectionExist(socket)) {
-				globalThis.connections.delete(socket.id)
+				globalThis.connections.delete(socket.id);
+				globalThis.connections.delete(socket);
 			}
 			
 		});

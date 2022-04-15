@@ -84,49 +84,10 @@ export function sendPeers(client: Net.Socket, response: Object) {
 
 export function gossipObject(obj: Types.Block | Types.Transaction) {
 	const hashOfObject = createObjectID(obj);
-	let peers;
 	(async () => {
-		peers = await db.DB.get("peers");
-		for (let peer in peers) {
-			let peerString = peer;
-			if (peer.includes(":")) peerString = peer.split(":")[0];
-			
-			
-			const peerToInformConnection = new Net.Socket();
-
-			peerToInformConnection.id = nanoid()
-			globalThis.peerStatuses[peerToInformConnection.id] = { buffer: "" };
-				peerToInformConnection.connect({ port: Constants.PORT, host: peerString }, () => {
-					peerToInformConnection.write(Constants.HELLO_MESSAGE + "\n");
-					peerToInformConnection.write(canonicalize({type: "ihaveobject", objectid: hashOfObject}) + "\n");
-					setTimeout(async () => {peerToInformConnection.end();}, 5000);
-				});
-				peerToInformConnection.on("error", function (err) {
-					
-				});
-				peerToInformConnection.on("data", (chunk) => {
-					const fullString = chunk.toString()
-					const msgs = fullString.split("\n");
-					if (!fullString.includes("\n")) {
-						Utils.sanitizeString(peerToInformConnection, fullString, false)
-					} else {
-						for (let i = 0; i < msgs.length; i++) {
-							const msg = msgs[i]
-							if (i == 0) {
-								const completedMessage = Utils.sanitizeString(peerToInformConnection, msg, true)
-								
-								
-								Utils.routeMessage(completedMessage, peerToInformConnection, peerToInformConnection.address()["address"]);
-							}else if (i == msgs.length - 1) {
-								msg != "" && Utils.sanitizeString(peerToInformConnection, msg, false)
-							}else {
-								
-								
-								Utils.routeMessage(msg, peerToInformConnection, peerToInformConnection.address()["address"]);
-							}
-						}
-					}
-				});
+		for (let peerToInformConnection of globalThis.sockets) {
+			peerToInformConnection.write(Constants.HELLO_MESSAGE + "\n");
+			peerToInformConnection.write(canonicalize({type: "ihaveobject", objectid: hashOfObject}) + "\n");
 		}
 	})();
 }
