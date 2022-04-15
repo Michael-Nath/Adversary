@@ -1,6 +1,10 @@
-import { validateTransaction, outpointExists } from "./utils";
+import { validateTransaction, outpointExists, DB } from "./utils";
 import type { Transaction } from "./types";
-const dummyTransaction: Transaction = {
+
+
+
+
+const validTransaction: Transaction = {
 	inputs: [
 		{
 			outpoint: {
@@ -20,7 +24,7 @@ const dummyTransaction: Transaction = {
 	type: "transaction",
 };
 
-const response = validateTransaction(dummyTransaction);
+const response = validateTransaction(validTransaction);
 console.log(response);
 
 // console.log(outpointExists(dummyTransaction["inputs"][0]["outpoint"]));
