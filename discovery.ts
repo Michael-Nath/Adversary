@@ -12,7 +12,9 @@ import * as fs from "fs";
 import * as path from "path";
 import { listenerCount } from "process";
 import { createObjectID } from "./blockUtils";
+import { nanoid } from 'nanoid'
 const canonicalize = require("canonicalize");
+
 
 // The port number and hostname of the server.
 declare global {
@@ -92,26 +94,56 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 		for (let peer in peers) {
 			let peerString = peer;
 			if (peer.includes(":")) peerString = peer.split(":")[0];
-
+			console.log("GOSSIPING TO PEER AT:")
+			console.log(peerString)
 			const peerToInformConnection = new Net.Socket();
-			try {
+
+			peerToInformConnection.id = nanoid()
+			globalThis.peerStatuses[peerToInformConnection.id] = { buffer: "" };
 				peerToInformConnection.connect({ port: Utils.PORT, host: peerString }, () => {
+					peerToInformConnection.write(Utils.HELLO_MESSAGE + "\n");
 					peerToInformConnection.write(canonicalize({type: "ihaveobject", objectid: hashOfObject}) + "\n");
-					peerToInformConnection.end();
+					setTimeout(async () => {peerToInformConnection.end();}, 5000);
 				});
-			} catch (err) {
-				console.error(err);
-			}	
+				peerToInformConnection.on("error", function (err) {
+					console.log(`Error: ${err}`);
+				});
+				peerToInformConnection.on("data", (chunk) => {
+					const fullString = chunk.toString()
+					const msgs = fullString.split("\n");
+					// console.log("MSGS: ", msgs)
+					if (!fullString.includes("\n")) {
+						Utils.sanitizeString(peerToInformConnection, fullString, false)
+					} else {
+						for (let i = 0; i < msgs.length; i++) {
+							const msg = msgs[i]
+							if (i == 0) {
+								const completedMessage = Utils.sanitizeString(peerToInformConnection, msg, true)
+								console.log("COMPLETED CLIENT MESSAGE:");
+								console.log(completedMessage)
+								Utils.routeMessage(completedMessage, peerToInformConnection, peerToInformConnection.address()["address"]);
+							}else if (i == msgs.length - 1) {
+								msg != "" && Utils.sanitizeString(peerToInformConnection, msg, false)
+							}else {
+								console.log("RECEIVED MSG:")
+								console.log(msg)
+								Utils.routeMessage(msg, peerToInformConnection, peerToInformConnection.address()["address"]);
+							}
+						}
+					}
+				});
 		}
 	})();
 }
 
 export function retrieveObject(socket: Net.Socket, response: Object) {
 	const hash = response["data"]["objectid"];
+	console.log("THE HASH RESPONSE MSG:")
+	console.log(response);
 	(async () => {
 		const doesHashExist = (await Utils.doesHashExist(hash))["exists"]
 		if (!doesHashExist) {
-			const getObjectMessage: Types.HashObjectMessage = {type: "getobject", hash: hash}
+			const getObjectMessage: Types.HashObjectMessage = {type: "getobject", objectid: hash}
 			socket.write(canonicalize(getObjectMessage) + "\n")
 	   }
 	})();
@@ -119,7 +151,8 @@ export function retrieveObject(socket: Net.Socket, response: Object) {
 
 export function sendObject(socket: Net.Socket, response: Object) {
 	const hash = response["data"]["objectid"];
-
+	console.log("THE HASH RESPONSE MSG:")
+	console.log(response);
 	(async () => {
 		const hashResponse = await Utils.doesHashExist(hash)
 		console.log(hashResponse);
@@ -130,11 +163,27 @@ export function sendObject(socket: Net.Socket, response: Object) {
 	})();
 }
 
-export function addObject(socket: Net.Socket, response: Object) {
-	const obj = response["data"]["object"];
-	Utils.updateDBWithObject(obj)
+export function addObject(socket: Net.Socket, response: Object, withObject: boolean) {
+	let obj = response["data"]
+	if (withObject) {
+		obj = obj["object"];
+	}
 	//TODO: VERIFY OBJECT
-	gossipObject(obj);
+	(async () => {
+		const hashResponse = await Utils.doesHashExist(createObjectID(obj))
+		console.log("DOES HASH EXIST RESPONSE");
+		console.log(hashResponse)
+		
+		const validationResponse = Utils.validateTransaction(obj)
+		const isValidTransaction: boolean = obj["type"] == "transaction" && (validationResponse["valid"] || obj["inputs"] == undefined);
+
+		if(!hashResponse["exists"] && (isValidTransaction || obj["type"] == "block")) {
+			gossipObject(obj);
+		}else if (obj["type"] == "transaction" && !(obj["inputs"] == undefined) && !isValidTransaction) {
+			Utils.sendErrorMessage(socket, validationResponse["msg"])
+		}
+		Utils.updateDBWithObject(obj);
+	})();
 } 
 
 export function obtainBootstrappingPeers(): Set<string> | void {

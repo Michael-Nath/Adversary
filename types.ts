@@ -28,7 +28,7 @@ export interface HelloMessage extends Message {
 }
 
 export interface HashObjectMessage extends Message {
-	hash: string;
+	objectid: string;
 }
 
 export interface ObjectMessage extends Message {
@@ -36,8 +36,13 @@ export interface ObjectMessage extends Message {
 }
 
 export interface TransactionInput {
-	outpoint: { txid: string; index: number };
+	outpoint: Outpoint;
 	sig: string;
+}
+
+export interface Outpoint {
+	txid: string;
+	index: number;
 }
 
 export interface TransactionOutput {
@@ -45,7 +50,7 @@ export interface TransactionOutput {
 	pubkey: string;
 }
 
-export interface Transaction {
+export interface Transaction extends Object {
 	type: "transaction";
 	inputs: [TransactionInput];
 	outputs: [TransactionOutput];
