@@ -166,8 +166,6 @@ export function sanitizeString(
 export function getUnsignedTransactionFrom(
 	transaction: Types.Transaction
 ): Types.Transaction {
-	console.log("TRYING TO UNSIGN TRANSACTION:");
-	console.log(transaction);
 	const unsignedTransaction = JSON.parse(JSON.stringify(transaction)) as Types.Transaction;
 	unsignedTransaction["inputs"].forEach((input) => {
 		input.sig = null;
@@ -262,8 +260,6 @@ export async function validateTransaction(transaction: Types.Transaction): Promi
 				msg: "Error: index provided not does not corresponding to any output of outpoint's transaction body.",
 			};
 		}
-		console.log("INPUT:")
-		console.log()
 		const sigToVerify = Uint8Array.from(Buffer.from(input.sig, "hex"));
 		const pubKey = Uint8Array.from(
 			Buffer.from(prevTransactionBody.outputs[outpoint.index]["pubkey"], "hex")
@@ -296,7 +292,6 @@ export async function validateTransaction(transaction: Types.Transaction): Promi
 export async function outpointExists(outpoint: Types.Outpoint): Promise<Object> {
 	let response;
 	await DB.get("hashobjects").then((allIDS) => {
-		console.log("FIRST");
 		let exist = false; 
 		for (let id in allIDS) {
 			if (id == outpoint.txid) {
@@ -309,7 +304,6 @@ export async function outpointExists(outpoint: Types.Outpoint): Promise<Object> 
 			response = { exists: false };
 		}
 	});
-	console.log("SECOND");
 	return response;
 
 }
