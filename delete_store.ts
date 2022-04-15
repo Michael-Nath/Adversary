@@ -1,3 +1,3 @@
-import * as Utils from "./utils";
+import * as db from "./db";
 
-(async () => await Utils.resetStore())();
+(async () => await db.resetStore())();

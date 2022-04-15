@@ -7,6 +7,7 @@
  */
 import * as Net from "net";
 import * as Utils from "./utils";
+import * as CONSTANTS from "./constants";
 import * as types from "./types";
 import * as Discovery from "./discovery";
 import { nanoid } from "nanoid";
@@ -25,25 +26,22 @@ export function startServer() {
 	const server: Net.Server = new Net.Server();
 	// The server listens to a socket for a client to make a connection request.
 	// Think of a socket as an end point.
-	server.listen(Utils.PORT, function () {
+	server.listen(CONSTANTS.PORT, function () {
 		console.log(
 			`Server listening for connection requests on socket ${
 				server.address()["address"]
-			}:${Utils.PORT}.`
+			}:${CONSTANTS.PORT}.`
 		);
 	});
 
 	// When a client requests a connection with the server, the server creates a new
 	// socket dedicated to that client.
 	server.on("connection", function (socket) {
-		
-		
-
 		socket.id = nanoid();
 		globalThis.peerStatuses[socket.id] = { buffer: "" };
 		// Now that a TCP connection has been established, the server can send data to
 		// the client by writing to its socket.
-		socket.write(Utils.HELLO_MESSAGE + "\n");
+		socket.write(CONSTANTS.HELLO_MESSAGE + "\n");
 		Discovery.getPeers(socket);
 
 		socket.on("data", (chunk) => {
@@ -82,10 +80,9 @@ export function startServer() {
 			}
 			
 		});
-
 		// Don't forget to catch error, for your own sake.
 		socket.on("error", function (err) {
-			
+			console.error(err);
 		});
 	});
 }

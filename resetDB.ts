@@ -1,6 +1,6 @@
-import * as Utils from "./utils"
+import * as db from "./db"
 
 (async () => {
-    await Utils.resetStore()
-    await Utils.initializeStore()
+    await db.resetStore()
+    await db.initializeStore()
 })();

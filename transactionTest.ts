@@ -1,4 +1,5 @@
-import { validateTransaction, outpointExists, DB } from "./utils";
+import { validateTransaction, outpointExists} from "./transactionUtils";
+import {DB} from "./db"
 import type { Transaction } from "./types";
 
 const validTransaction: Transaction = {

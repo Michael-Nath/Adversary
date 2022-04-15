@@ -9,6 +9,7 @@
 const Net = require("net");
 
 import * as Utils from "./utils";
+import * as CONSTANTS from "./constants";
 import * as Discovery from "./discovery";
 import { nanoid } from 'nanoid'
 
@@ -22,7 +23,7 @@ export function startClient() {
 		
 		
 		// Send a connection request to the server.
-		client.connect({ port: Utils.PORT, host: peer }, () =>
+		client.connect({ port: CONSTANTS.PORT, host: peer }, () =>
 			Discovery.connectToNode(client)
 		);
 		// // The client can also receive data from the server by reading from its socket.
