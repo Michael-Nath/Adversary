@@ -168,6 +168,8 @@ export function sanitizeString(
 export function getUnsignedTransactionFrom(
 	transaction: Types.Transaction
 ): Types.Transaction {
+	console.log("TRYING TO UNSIGN TRANSACTION:");
+	console.log(transaction);
 	const unsignedTransaction = transaction;
 	unsignedTransaction["inputs"].forEach((input) => {
 		input.sig = null;

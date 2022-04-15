@@ -147,12 +147,13 @@ export function retrieveObject(socket: Net.Socket, response: Object) {
 export function sendObject(socket: Net.Socket, response: Object) {
 	const hash = response["data"]["objectid"];
 	
-	
 	(async () => {
 		const hashResponse = await Utils.doesHashExist(hash)
 		
 		console.log("SENDING OBJECT WITH HASH RESPONSE:");
 		console.log(hashResponse);
+		console.log(response);
+
 		if (hashResponse["exists"]) {
 			const objectMessage: Types.ObjectMessage = {type: "object", object: hashResponse["obj"]}
 			socket.write(canonicalize(objectMessage) + "\n")
@@ -171,14 +172,23 @@ export function addObject(socket: Net.Socket, response: Object, withObject: bool
 		
 		console.log("ADDING OBJECT WITH RESPONSE:");
 		console.log(hashResponse);
+		console.log(obj);
 		
-		const validationResponse = Utils.validateTransaction(obj)
-		const isValidTransaction: boolean = obj["type"] == "transaction" && (validationResponse["valid"] || obj["inputs"] == undefined);
+		const isCoinbase: boolean = (obj["height"] != undefined)
 
-		if(!hashResponse["exists"] && (isValidTransaction || obj["type"] == "block" || withObject)) {
-			gossipObject(obj);
-		}else if (obj["type"] == "transaction" && !(obj["inputs"] == undefined) && !isValidTransaction) {
-			Utils.sendErrorMessage(socket, validationResponse["msg"])
+		if (!isCoinbase) {
+			const validationResponse = Utils.validateTransaction(obj)
+			const isValidTransaction: boolean = obj["type"] == "transaction" && (validationResponse["valid"] || obj["height"] != undefined);
+
+			if(!hashResponse["exists"] && (isValidTransaction || obj["type"] == "block")) {
+				gossipObject(obj);
+			}else if (obj["type"] == "transaction" && !isValidTransaction) {
+				Utils.sendErrorMessage(socket, validationResponse["msg"])
+			}
+		} else {
+			if(!hashResponse["exists"]) {
+				gossipObject(obj);
+			}
 		}
 		Utils.updateDBWithObject(obj);
 	})();

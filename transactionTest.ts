@@ -1,9 +1,6 @@
 import { validateTransaction, outpointExists, DB } from "./utils";
 import type { Transaction } from "./types";
 
-
-
-
 const validTransaction: Transaction = {
 	inputs: [
 		{
