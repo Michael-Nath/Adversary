@@ -1,29 +1,29 @@
 /**
- * @author Michael D. Nath, Kenan Hasanaliyev, Gabriel Greenstein
- * @email mnath@stanford.edu, kenanhas@stanford.edu, gbg222@stanford.edu
+ * @author Michael D. Nath, Kenan Hasanaliyev
+ * @email mnath@stanford.edu, kenanhas@stanford.edu
  * @create date 2022-04-02
  * @modify date 2022-04-02
- * @desc [description]
+ * @desc discovery.ts contains all operations needed to execute successful peer discovery.
  */
 import * as Net from "net";
 import * as Types from "./types";
 import * as Utils from "./utils";
+import * as Constants from "./constants"
+import * as db from "db"
 import * as fs from "fs";
 import * as path from "path";
-import { listenerCount } from "process";
 import { createObjectID } from "./blockUtils";
+import { validateTransaction } from "transactionUtils";
 import { nanoid } from 'nanoid'
 const canonicalize = require("canonicalize");
 
 
-// The port number and hostname of the server.
 declare global {
 	var peerStatuses: {};
 }
 
 export function connectToNode(client: Net.Socket) {
-	
-	client.write(Utils.HELLO_MESSAGE + "\n");
+	client.write(Constants.HELLO_MESSAGE + "\n");
 	getPeers(client);
 }
 
@@ -38,7 +38,7 @@ export function getHello(
 	if (!connectionExists && !Utils.isValidFirstMessage(response)) {
 		const errorMessage: Types.ErrorMessage = {
 			type: "error",
-			error: Utils.HELLO_ERROR,
+			error: Constants.HELLO_ERROR,
 		};
 		socket.write(canonicalize(errorMessage) + "\n");
 		socket.destroy();
@@ -47,7 +47,7 @@ export function getHello(
 			const newPeerEntry = {};
 			newPeerEntry[peer] = [];
 			globalThis.connections.add(socket.id);
-			await Utils.DB.merge("peers", newPeerEntry);
+			await db.DB.merge("peers", newPeerEntry);
 		})();
 	}
 }
@@ -61,17 +61,17 @@ export function getPeers(socket: Net.Socket) {
 
 export function updatePeers(socket: Net.Socket, response: Object) {
 	const newPeers: Array<string> = response["data"]["peers"];
-	Utils.updateDBWithPeers(newPeers);
+	db.updateDBWithPeers(newPeers);
 }
 
 export function sendPeers(client: Net.Socket, response: Object) {
 	const peersArray = [];
 	let peers;
 	(async () => {
-		peers = await Utils.DB.get("peers");
+		peers = await db.DB.get("peers");
 		for (let peer in peers) {
 			let peerString = peer;
-			if (!peer.includes(":")) peerString += `:${Utils.PORT}`;
+			if (!peer.includes(":")) peerString += `:${Constants.PORT}`;
 			peersArray.push(peerString);
 		}
 		const peersMessage = {
@@ -86,7 +86,7 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 	const hashOfObject = createObjectID(obj);
 	let peers;
 	(async () => {
-		peers = await Utils.DB.get("peers");
+		peers = await db.DB.get("peers");
 		for (let peer in peers) {
 			let peerString = peer;
 			if (peer.includes(":")) peerString = peer.split(":")[0];
@@ -96,8 +96,8 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 
 			peerToInformConnection.id = nanoid()
 			globalThis.peerStatuses[peerToInformConnection.id] = { buffer: "" };
-				peerToInformConnection.connect({ port: Utils.PORT, host: peerString }, () => {
-					peerToInformConnection.write(Utils.HELLO_MESSAGE + "\n");
+				peerToInformConnection.connect({ port: Constants.PORT, host: peerString }, () => {
+					peerToInformConnection.write(Constants.HELLO_MESSAGE + "\n");
 					peerToInformConnection.write(canonicalize({type: "ihaveobject", objectid: hashOfObject}) + "\n");
 					setTimeout(async () => {peerToInformConnection.end();}, 5000);
 				});
@@ -133,10 +133,8 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 
 export function retrieveObject(socket: Net.Socket, response: Object) {
 	const hash = response["data"]["objectid"];
-	
-	
 	(async () => {
-		const doesHashExist = (await Utils.doesHashExist(hash))["exists"]
+		const doesHashExist = (await db.doesHashExist(hash))["exists"]
 		if (!doesHashExist) {
 			const getObjectMessage: Types.HashObjectMessage = {type: "getobject", objectid: hash}
 			socket.write(canonicalize(getObjectMessage) + "\n")
@@ -148,7 +146,7 @@ export function sendObject(socket: Net.Socket, response: Object) {
 	const hash = response["data"]["objectid"];
 	
 	(async () => {
-		const hashResponse = await Utils.doesHashExist(hash)
+		const hashResponse = await db.doesHashExist(hash)
 		
 		console.log("SENDING OBJECT WITH HASH RESPONSE:");
 		console.log(hashResponse);
@@ -163,9 +161,8 @@ export function sendObject(socket: Net.Socket, response: Object) {
 
 export async function addObject(socket: Net.Socket, response: Object) {
 	const obj = response["data"]["object"];
-	//TODO: VERIFY OBJECT
 	(async () => {
-		const hashResponse = await Utils.doesHashExist(createObjectID(obj))
+		const hashResponse = await db.doesHashExist(createObjectID(obj))
 		
 		console.log("ADDING OBJECT WITH RESPONSE:");
 		console.log(hashResponse);
@@ -176,7 +173,7 @@ export async function addObject(socket: Net.Socket, response: Object) {
 		const isBlock: boolean = obj["type"] == "block"
 
 		if (!isCoinbase && !isBlock) {
-			const validationResponse = await Utils.validateTransaction(obj)
+			const validationResponse = await validateTransaction(obj)
 			const isValidTransaction: boolean = obj["type"] == "transaction" && (validationResponse["valid"] || obj["height"] != undefined);
 
 			if(!hashResponse["exists"] && isValidTransaction) {
@@ -189,7 +186,7 @@ export async function addObject(socket: Net.Socket, response: Object) {
 				gossipObject(obj);
 			}
 		}
-		Utils.updateDBWithObject(obj);
+		db.updateDBWithObject(obj);
 	})();
 } 
 
