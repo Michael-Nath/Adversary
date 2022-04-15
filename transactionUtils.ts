@@ -126,18 +126,24 @@ export async function validateTransaction(
 				msg: "Error: index provided not does not corresponding to any output of outpoint's transaction body.",
 			};
 		}
-		console.log("INPUT:");
-		console.log();
-		const sigToVerify = Uint8Array.from(Buffer.from(input.sig, "hex"));
-		const pubKey = Uint8Array.from(
-			Buffer.from(prevTransactionBody.outputs[outpoint.index]["pubkey"], "hex")
-		);
-		const isValid = await ed.verify(
-			sigToVerify,
-			new TextEncoder().encode(JSON.stringify(unsignedTransaction)),
-			pubKey
-		);
-		if (!isValid) {
+		try {
+			const sigToVerify = Uint8Array.from(Buffer.from(input.sig, "hex"));
+			const pubKey = Uint8Array.from(
+				Buffer.from(prevTransactionBody.outputs[outpoint.index]["pubkey"], "hex")
+			);
+			const isValid = await ed.verify(
+				sigToVerify,
+				new TextEncoder().encode(JSON.stringify(unsignedTransaction)),
+				pubKey
+			);
+			if (!isValid) {
+				return {
+					valid: false,
+					msg: "Error: invalid signature for transaction body",
+				};
+			}
+		} catch (err) {
+			console.log(err);
 			return {
 				valid: false,
 				msg: "Error: invalid signature for transaction body",

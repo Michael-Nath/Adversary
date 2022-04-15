@@ -86,7 +86,6 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 	const hashOfObject = createObjectID(obj);
 	(async () => {
 		for (let peerToInformConnection of globalThis.sockets) {
-			peerToInformConnection.write(Constants.HELLO_MESSAGE + "\n");
 			peerToInformConnection.write(canonicalize({type: "ihaveobject", objectid: hashOfObject}) + "\n");
 		}
 	})();

@@ -9,7 +9,7 @@ import * as Net from "net";
 globalThis.connections = Discovery.obtainBootstrappingPeers() as Set<string>;
 db.updateDBWithPeers(globalThis.connections);
 globalThis.peerStatuses = {};
-globalThis.sockets = {} as Set<Net.Socket>;
+globalThis.sockets = new Set<Net.Socket>();
 // Utils.resetStore()
 // Utils.initializeStore()
 startServer();

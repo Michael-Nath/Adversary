@@ -75,12 +75,10 @@ export function startServer() {
 		// When the client requests to end the TCP connection with the server, the server
 		// ends the connection.
 		socket.on("end", function () {
-			
 			if (Utils.doesConnectionExist(socket)) {
 				globalThis.connections.delete(socket.id);
-				globalThis.connections.delete(socket);
+				globalThis.sockets.delete(socket);
 			}
-			
 		});
 		// Don't forget to catch error, for your own sake.
 		socket.on("error", function (err) {
