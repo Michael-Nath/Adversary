@@ -138,11 +138,9 @@ export function routeMessage(msg: string, socket: Socket, peer: string) {
 			Discovery.sendObject(socket, response);
 			break;
 		case "object":
-			
-			Discovery.addObject(socket, response, true);
-			break;
-		case "transaction":
-			Discovery.addObject(socket, response, false);
+			(async () => {
+				Discovery.addObject(socket, response);
+			})();
 			break;
 		default:
 			console.error("Invalid message type");
@@ -170,7 +168,7 @@ export function getUnsignedTransactionFrom(
 ): Types.Transaction {
 	console.log("TRYING TO UNSIGN TRANSACTION:");
 	console.log(transaction);
-	const unsignedTransaction = transaction;
+	const unsignedTransaction = JSON.parse(JSON.stringify(transaction)) as Types.Transaction;
 	unsignedTransaction["inputs"].forEach((input) => {
 		input.sig = null;
 	});
@@ -239,7 +237,7 @@ function transactionIsFormattedCorrectly(transaction: Types.Transaction): {} {
 	return { valid: true };
 }
 
-export function validateTransaction(transaction: Types.Transaction): {} {
+export async function validateTransaction(transaction: Types.Transaction): Promise<Object> {
 	const formatResponse = transactionIsFormattedCorrectly(transaction);
 	if (!formatResponse["valid"]) {
 		return formatResponse;
@@ -252,7 +250,8 @@ export function validateTransaction(transaction: Types.Transaction): {} {
 	for (let i = 0; i < inputs.length; i++) {
 		const input = inputs[i];
 		const outpoint: Types.Outpoint = input.outpoint;
-		const response = outpointExists(outpoint);
+		const response = await outpointExists(outpoint);
+		
 		if (!response["exists"]) {
 			return { valid: false, msg: "Error: outpoint does not exist." };
 		}
@@ -263,24 +262,23 @@ export function validateTransaction(transaction: Types.Transaction): {} {
 				msg: "Error: index provided not does not corresponding to any output of outpoint's transaction body.",
 			};
 		}
+		console.log("INPUT:")
+		console.log()
 		const sigToVerify = Uint8Array.from(Buffer.from(input.sig, "hex"));
 		const pubKey = Uint8Array.from(
 			Buffer.from(prevTransactionBody.outputs[outpoint.index]["pubkey"], "hex")
 		);
-		let isValid;
-		(async () => {
-			isValid = await ed.verify(
-				sigToVerify,
-				JSON.stringify(unsignedTransaction),
-				pubKey
-			);
-			if (!isValid) {
-				return {
-					valid: false,
-					msg: "Error: invalid signature for transaction body",
-				};
-			}
-		})();
+		const isValid = await ed.verify(
+			sigToVerify,
+			new TextEncoder().encode(JSON.stringify(unsignedTransaction)),
+			pubKey
+		);
+		if (!isValid) {
+			return {
+				valid: false,
+				msg: "Error: invalid signature for transaction body",
+			};
+		}
 		inputValues += prevTransactionBody.outputs[outpoint.index]["value"];
 	}
 	outputs.forEach((output) => {
@@ -295,17 +293,25 @@ export function validateTransaction(transaction: Types.Transaction): {} {
 	return { valid: true };
 }
 
-export function outpointExists(outpoint: Types.Outpoint): object {
-	let allIDS;
-	(async () => {
-		allIDS = await DB.get("hashobjects");
-	})();
-	for (let id in allIDS) {
-		if (id == outpoint.txid) {
-			return { exists: true, obj: allIDS[id] };
+export async function outpointExists(outpoint: Types.Outpoint): Promise<Object> {
+	let response;
+	await DB.get("hashobjects").then((allIDS) => {
+		console.log("FIRST");
+		let exist = false; 
+		for (let id in allIDS) {
+			if (id == outpoint.txid) {
+				response = { exists: true, obj: allIDS[id] };
+				exist = true;
+				break;
+			}
 		}
-	}
-	return { exists: false };
+		if (!exist) {
+			response = { exists: false };
+		}
+	});
+	console.log("SECOND");
+	return response;
+
 }
 
 export function updateDBWithPeers(peers: Set<string> | Array<string>) {
@@ -331,10 +337,6 @@ export function updateDBWithObject(obj: Types.Block | Types.Transaction) {
 export async function doesHashExist(hash: string) {
 	const allObjects = await DB.get("hashobjects");
 	for (let DBhash in allObjects) {
-		
-		
-		
-		
 		if (DBhash == hash) {
 			return { exists: true, obj: allObjects[DBhash] };
 		}

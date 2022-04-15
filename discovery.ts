@@ -161,11 +161,8 @@ export function sendObject(socket: Net.Socket, response: Object) {
 	})();
 }
 
-export function addObject(socket: Net.Socket, response: Object, withObject: boolean) {
-	let obj = response["data"]
-	if (withObject) {
-		obj = obj["object"];
-	}
+export async function addObject(socket: Net.Socket, response: Object) {
+	const obj = response["data"]["object"];
 	//TODO: VERIFY OBJECT
 	(async () => {
 		const hashResponse = await Utils.doesHashExist(createObjectID(obj))
@@ -173,14 +170,16 @@ export function addObject(socket: Net.Socket, response: Object, withObject: bool
 		console.log("ADDING OBJECT WITH RESPONSE:");
 		console.log(hashResponse);
 		console.log(obj);
+		console.log(createObjectID(obj))
 		
 		const isCoinbase: boolean = (obj["height"] != undefined)
+		const isBlock: boolean = obj["type"] == "block"
 
-		if (!isCoinbase) {
-			const validationResponse = Utils.validateTransaction(obj)
+		if (!isCoinbase && !isBlock) {
+			const validationResponse = await Utils.validateTransaction(obj)
 			const isValidTransaction: boolean = obj["type"] == "transaction" && (validationResponse["valid"] || obj["height"] != undefined);
 
-			if(!hashResponse["exists"] && (isValidTransaction || obj["type"] == "block")) {
+			if(!hashResponse["exists"] && isValidTransaction) {
 				gossipObject(obj);
 			}else if (obj["type"] == "transaction" && !isValidTransaction) {
 				Utils.sendErrorMessage(socket, validationResponse["msg"])
