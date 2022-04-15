@@ -55,5 +55,8 @@ export function startClient() {
 			console.log("Requested an end to the TCP connection");
 			globalThis.connections.delete(client.id)
 		});
+		client.on("error", function (err) {
+			console.log(`Error: ${err}`);
+		});
 	});
 }

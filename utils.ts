@@ -143,7 +143,10 @@ export function routeMessage(msg: string, socket: Socket, peer: string) {
 			Discovery.sendObject(socket, response);
 			break;
 		case "object":
-			Discovery.addObject(socket, response);
+			Discovery.addObject(socket, response, true);
+			break;
+		case "transaction":
+			Discovery.addObject(socket, response, false);
 			break;
 		default:
 			console.error("Invalid message type");
@@ -320,15 +323,20 @@ export function updateDBWithPeers(peers: Set<string> | Array<string>) {
 
 export function updateDBWithObject(obj: Types.Block | Types.Transaction) {
 	const hashOfObject = createObjectID(obj);
-
+	console.log("Updating Object with Hash:");
+	console.log(hashOfObject);
 	(async () => {
-		await DB.merge("hashobjects", { hashOfObject: obj });
-	})();
+		await DB.merge("hashobjects", {[hashOfObject]: obj});
+	})();	
 }
 
 export async function doesHashExist(hash: string) {
 	const allObjects = await DB.get("hashobjects");
 	for (let DBhash in allObjects) {
+		console.log("DB HASH:");
+		console.log(DBhash);
+		console.log("REAL HASH");
+		console.log(hash);
 		if (DBhash == hash) {
 			return { exists: true, obj: allObjects[DBhash] };
 		}
