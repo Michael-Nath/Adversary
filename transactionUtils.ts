@@ -35,9 +35,16 @@ export function getUnsignedTransactionFrom(
 	return unsignedTransaction;
 }
 
-export function isHex(h: string): boolean {
-	var a = parseInt(h, 16);
-	return a.toString(16) === h.toLowerCase();
+function isHex(h): boolean {
+	try {
+		if((h as string).match(/^[0-9a-f]+$/)) {
+			return true
+		}else {
+			return false
+		}
+	} catch (err) {
+		return false
+	}
 }
 
 function transactionIsFormattedCorrectly(
@@ -57,32 +64,20 @@ function transactionIsFormattedCorrectly(
 	}
 	// each input must contain keys "outpoint" and "sig"
 	// each input must have a signature that is hexadecimal string
-	transaction["inputs"].forEach((input) => {
-		if (!("outpoint" in input)) {
+	for (let input of transaction["inputs"]) {
+		console.log("INPUT:");
+		console.log(input);
+		if (!(input.outpoint)) {
 			return {
 				valid: false,
 				msg: "Error: outpoint must be present in every input.",
 			};
 		}
-		if(!("sig" in input)) {
+		if(!(input.sig)) {
 			return {
 				valid: false,
 				msg: "Error: sig key must be present in every input.",
 			};
-		}else {
-			try {
-				if (!input["sig"].match(/^[0-9a-f]+$/)) {
-					return {
-						valid: false,
-						msg: "Error: sig key must be a hex string.",
-					};
-				}
-			}catch (err) {
-				return {
-					valid: false,
-					msg: "Error: sig key must be a hex string.",
-				};
-			}
 		}
 		if (!isHex(input.sig)) {
 			return {
@@ -90,20 +85,18 @@ function transactionIsFormattedCorrectly(
 				msg: "Error: every signature must be a hexadeciaml decimal.",
 			};
 		}
-	});
+	}
 
-	transaction["outputs"].forEach((output) => {
-		if (!("pubkey" in output) || !("value" in output)) {
+	for (let output of transaction["outputs"]) {
+		if (!(output.pubkey) || !(output.value)) {
 			return {
 				valid: false,
 				msg: "Error: pubkey and value key must be present in every output.",
 			};
 		}
 		if (
-			!isNaN(Number(output["value"])) ||
-			output["value"] < 0 ||
-			Math.floor(output["value"]) != output["value"]
-		) {
+			!Number.isInteger(output["value"]) ||
+			output["value"] < 0) {
 			return {
 				valid: false,
 				msg: "Error: output of a transaction must be non-negative integer.",
@@ -115,7 +108,7 @@ function transactionIsFormattedCorrectly(
 				msg: "Error: all public keys must be a hexadecimal string.",
 			};
 		}
-	});
+	}
 	return { valid: true };
 }
 
