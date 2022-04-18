@@ -1,8 +1,19 @@
-import { Transaction, Block, VerificationResponse } from "./types";
+import {
+	Transaction,
+	Block,
+	VerificationResponse,
+	TransactionRequest,
+} from "./types";
+import type { Socket } from "net";
 import * as sha256 from "fast-sha256";
-import { isHex } from "transactionUtils";
+import { isHex } from "./transactionUtils";
+import * as db from "./db";
+import { getPeers } from "discovery";
+const T_VALUE =
+	"00000002af000000000000000000000000000000000000000000000000000000";
 
 const canonicalize = require("canonicalize");
+
 export function createObjectID(object: Block | Transaction): string {
 	const canonicalizedJSON = canonicalize(object);
 	const uint8arr = new TextEncoder().encode(canonicalizedJSON);
@@ -76,7 +87,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 		};
 	}
 	// Check target
-	if (!blockifiedBlock["T"] || blockifiedBlock["T"] != "00000002af000000000000000000000000000000000000000000000000000000") {
+	if (!blockifiedBlock["T"] || blockifiedBlock["T"] != T_VALUE) {
 		return {
 			valid: false,
 			msg: "Invalid target",
@@ -89,10 +100,23 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 			msg: "Proof of work invalid",
 		};
 	}
+}
 
-	for (let txid of blockifiedBlock["txids"]) {
-		
+// TODO: create function that takes a TransactionRequest object and sends a getpeers message asking for the missing transactions. 
+export async function correspondingTransactionsExist(
+	txids: [string]
+): Promise<TransactionRequest> {
+	const allObjects = await db.DB.get("hashobjects");
+	let missingTransactions: [string];
+	for (let txid in txids) {
+		if (!allObjects[txid]) {
+			missingTransactions.push(txid);
+		}
 	}
+	if (missingTransactions.length > 0) {
+		return { missing: true, txids: missingTransactions };
+	}
+	return { missing: false, txids: missingTransactions };
 }
 
 const fakeBlock = {
@@ -100,4 +124,7 @@ const fakeBlock = {
 	txids: [1, 2],
 };
 
-console.log(validateBlockFormat(fakeBlock));
+// console.log(validateBlockFormat(fakeBlock));
+(async () => {
+	console.log(await correspondingTransactionsExist([""]));
+})();

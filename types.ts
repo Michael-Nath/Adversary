@@ -63,7 +63,7 @@ export interface Block extends Object {
 	nonce: string;
 	previd: string;
 	miner?: string;
-	T: string,
+	T: string;
 	note?: string;
 }
 
@@ -74,6 +74,11 @@ export interface VerificationResponse {
 	valid?: boolean;
 	msg?: string;
 	obj?: Transaction;
+}
+
+export interface TransactionRequest {
+	missing: boolean;
+	txids: [string];
 }
 
 export type HashToObjectMap = Map<string, ApplicationObject>;
