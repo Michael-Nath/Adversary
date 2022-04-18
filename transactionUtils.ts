@@ -58,11 +58,31 @@ function transactionIsFormattedCorrectly(
 	// each input must contain keys "outpoint" and "sig"
 	// each input must have a signature that is hexadecimal string
 	transaction["inputs"].forEach((input) => {
-		if (!("outpoint" in input) || !("sig" in input)) {
+		if (!("outpoint" in input)) {
 			return {
 				valid: false,
-				msg: "Error: outpoint and sig key must be present in every input.",
+				msg: "Error: outpoint must be present in every input.",
 			};
+		}
+		if(!("sig" in input)) {
+			return {
+				valid: false,
+				msg: "Error: sig key must be present in every input.",
+			};
+		}else {
+			try {
+				if (!input["sig"].match(/^[0-9a-f]+$/)) {
+					return {
+						valid: false,
+						msg: "Error: sig key must be a hex string.",
+					};
+				}
+			}catch (err) {
+				return {
+					valid: false,
+					msg: "Error: sig key must be a hex string.",
+				};
+			}
 		}
 		if (!isHex(input.sig)) {
 			return {
