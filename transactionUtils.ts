@@ -69,20 +69,11 @@ function transactionIsFormattedCorrectly(
 				valid: false,
 				msg: "Error: sig key must be present in every input.",
 			};
-		}else {
-			try {
-				if (!input["sig"].match(/^[0-9a-f]+$/)) {
-					return {
-						valid: false,
-						msg: "Error: sig key must be a hex string.",
-					};
-				}
-			}catch (err) {
-				return {
-					valid: false,
-					msg: "Error: sig key must be a hex string.",
-				};
-			}
+		}else if (input["sig"] == null) {
+			return {
+				valid: false,
+				msg: "Error: sig key must not be null.",
+			};
 		}
 		if (!isHex(input.sig)) {
 			return {
