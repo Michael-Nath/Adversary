@@ -75,6 +75,24 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 			msg: "note key must be valid string of max length 128",
 		};
 	}
+	// Check target
+	if (!blockifiedBlock["T"] || blockifiedBlock["T"] != "00000002af000000000000000000000000000000000000000000000000000000") {
+		return {
+			valid: false,
+			msg: "Invalid target",
+		};
+	}
+	//Check proof of work
+	if (!(createObjectID(blockifiedBlock) < blockifiedBlock["T"])) {
+		return {
+			valid: false,
+			msg: "Proof of work invalid",
+		};
+	}
+
+	for (let txid of blockifiedBlock["txids"]) {
+		
+	}
 }
 
 const fakeBlock = {

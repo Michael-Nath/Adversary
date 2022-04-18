@@ -35,7 +35,7 @@ export function getUnsignedTransactionFrom(
 	return unsignedTransaction;
 }
 
-function isHex(h): boolean {
+export function isHex(h): boolean {
 	try {
 		if((h as string).match(/^[0-9a-f]+$/)) {
 			return true
