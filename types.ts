@@ -53,7 +53,7 @@ export interface TransactionOutput {
 export interface Transaction extends Object {
 	type: "transaction";
 	inputs?: [TransactionInput]; // coinbase txs have no inputs
-	height?: number, // non-coinbase txs have no height key
+	height?: number; // non-coinbase txs have no height key
 	outputs: [TransactionOutput];
 }
 
@@ -63,16 +63,17 @@ export interface Block extends Object {
 	nonce: string;
 	previd: string;
 	miner?: string;
+	T: string,
 	note?: string;
 }
 
 export type ApplicationObject = Transaction | Block;
 
 export interface VerificationResponse {
-	exists?: boolean,
-	valid?: boolean,
-	msg?: string,
-	obj?: Transaction
+	exists?: boolean;
+	valid?: boolean;
+	msg?: string;
+	obj?: Transaction;
 }
 
 export type HashToObjectMap = Map<string, ApplicationObject>;

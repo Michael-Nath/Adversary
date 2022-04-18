@@ -35,7 +35,7 @@ export function getUnsignedTransactionFrom(
 	return unsignedTransaction;
 }
 
-function isHex(h: string): boolean {
+export function isHex(h: string): boolean {
 	var a = parseInt(h, 16);
 	return a.toString(16) === h.toLowerCase();
 }
