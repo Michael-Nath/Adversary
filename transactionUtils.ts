@@ -21,6 +21,36 @@ export async function outpointExists(
 	return { exists: false };
 }
 
+export function isCoinbase(transaction: Transaction): boolean {
+	return transaction["height"] && !transaction["inputs"];
+}
+export function validateCoinbase(
+	coinbase: Transaction,
+	index: number
+): VerificationResponse {
+	if (index != 0)
+		return {
+			valid: false,
+			msg: "Coinbase transaction not first transaction in block",
+		};
+	if (coinbase["outputs"].length != 1) {
+		return {
+			valid: false,
+			msg: "Coinbase transaction must have exactly one output",
+		};
+	}
+	if (
+		typeof coinbase["height"] != "number" ||
+		coinbase["height"] < 0 ||
+		Math.floor(coinbase["height"]) != coinbase["height"]
+	) {
+		return {
+			valid: false,
+			msg: "Coinbase transaction must have valid non-negative integer height",
+		};
+	}
+	return { valid: true, data: { value: coinbase["outputs"][0]["value"] } };
+}
 export function getUnsignedTransactionFrom(
 	transaction: Transaction
 ): Transaction {
@@ -37,13 +67,13 @@ export function getUnsignedTransactionFrom(
 
 export function isHex(h): boolean {
 	try {
-		if((h as string).match(/^[0-9a-f]+$/)) {
-			return true
-		}else {
-			return false
+		if ((h as string).match(/^[0-9a-f]+$/)) {
+			return true;
+		} else {
+			return false;
 		}
 	} catch (err) {
-		return false
+		return false;
 	}
 }
 
@@ -51,7 +81,7 @@ function transactionIsFormattedCorrectly(
 	transaction: Transaction
 ): VerificationResponse {
 	// FOR PSET 2: Coinbase Transactions are always valid
-	if ("height" in transaction) {
+	if (isCoinbase(transaction)) {
 		return { valid: true };
 	}
 
@@ -67,13 +97,13 @@ function transactionIsFormattedCorrectly(
 	for (let input of transaction["inputs"]) {
 		console.log("INPUT:");
 		console.log(input);
-		if (!(input.outpoint)) {
+		if (!input.outpoint) {
 			return {
 				valid: false,
 				msg: "Error: outpoint must be present in every input.",
 			};
 		}
-		if(!(input.sig)) {
+		if (!input.sig) {
 			return {
 				valid: false,
 				msg: "Error: sig key must be present in every input.",
@@ -88,15 +118,13 @@ function transactionIsFormattedCorrectly(
 	}
 
 	for (let output of transaction["outputs"]) {
-		if (!(output.pubkey) || !(output.value)) {
+		if (!output.pubkey || !output.value) {
 			return {
 				valid: false,
 				msg: "Error: pubkey and value key must be present in every output.",
 			};
 		}
-		if (
-			!Number.isInteger(output["value"]) ||
-			output["value"] < 0) {
+		if (!Number.isInteger(output["value"]) || output["value"] < 0) {
 			return {
 				valid: false,
 				msg: "Error: output of a transaction must be non-negative integer.",
@@ -142,7 +170,10 @@ export async function validateTransaction(
 		try {
 			const sigToVerify = Uint8Array.from(Buffer.from(input.sig, "hex"));
 			const pubKey = Uint8Array.from(
-				Buffer.from(prevTransactionBody.outputs[outpoint.index]["pubkey"], "hex")
+				Buffer.from(
+					prevTransactionBody.outputs[outpoint.index]["pubkey"],
+					"hex"
+				)
 			);
 			const isValid = await ed.verify(
 				sigToVerify,
@@ -173,5 +204,5 @@ export async function validateTransaction(
 			msg: "Error: law of weak conversation is broken in this transaction.",
 		};
 	}
-	return { valid: true };
+	return { valid: true, data: { inputValues, outputValues } };
 }

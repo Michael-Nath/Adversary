@@ -6,12 +6,17 @@ import {
 } from "./types";
 import type { Socket } from "net";
 import * as sha256 from "fast-sha256";
-import { isHex } from "./transactionUtils";
+import {
+	isCoinbase,
+	isHex,
+	validateCoinbase,
+	validateTransaction,
+} from "./transactionUtils";
 import * as db from "./db";
 import { getPeers } from "discovery";
 const T_VALUE =
 	"00000002af000000000000000000000000000000000000000000000000000000";
-
+const BLOCK_REWARD = 50;
 const canonicalize = require("canonicalize");
 
 export function createObjectID(object: Block | Transaction): string {
@@ -23,7 +28,7 @@ export function createObjectID(object: Block | Transaction): string {
 
 export function validateBlockFormat(block: Object): VerificationResponse {
 	// block must have desired keys
-	const requiredKeys = ["txids", "nonce", "previd"];
+	const requiredKeys = ["txids", "nonce", "previd", "T", "created", "type"];
 	const optionalKeys = ["miner", "note"];
 	for (let key of requiredKeys) {
 		if (!block[key]) {
@@ -100,16 +105,64 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 			msg: "Proof of work invalid",
 		};
 	}
+	return { valid: true };
 }
 
-// TODO: create function that takes a TransactionRequest object and sends a getpeers message asking for the missing transactions. 
+export async function validateBlock(
+	block: Object
+): Promise<VerificationResponse> {
+	const response = validateBlockFormat(block);
+	if (!response.valid) return response;
+	let coinbaseTXID;
+	let coinbaseOutputValue = 0;
+	let sumInputValues = 0;
+	let sumOutputValues = 0;
+	// validate each transaction in the block
+	const txids: [string] = block["txids"];
+	for (let index = 0; index < txids.length; index++) {
+		try {
+			const transaction = (await db.TRANSACTIONS.get(
+				txids[index]
+			)) as Transaction;
+			if (isCoinbase(transaction)) {
+				const coinbaseResponse = validateCoinbase(transaction, index);
+				if (!coinbaseResponse.valid) return coinbaseResponse;
+				coinbaseTXID = txids[index];
+				coinbaseOutputValue = coinbaseResponse["data"]["value"];
+			} else {
+				for (let input of transaction["inputs"]) {
+					if (input.outpoint == coinbaseTXID) {
+						return {
+							valid: false,
+							msg: "Coinbase transaction cannot be spent in same block",
+						};
+					}
+				}
+				const transactionResponse = await validateTransaction(transaction);
+				if (!transactionResponse.valid) return transactionResponse;
+				sumInputValues += transactionResponse["data"]["inputValues"];
+				sumOutputValues += transactionResponse["data"]["outputValues"];
+			}
+		} catch (err) {
+			console.log(err);
+		}
+	}
+	if (coinbaseOutputValue > BLOCK_REWARD + (sumOutputValues - sumInputValues))
+		return {
+			valid: false,
+			msg: "coinbase transaction does not satisfy law of conservation",
+		};
+}
+
+// TODO: create function that takes a TransactionRequest object and sends a getpeers message asking for the missing transactions.
 export async function correspondingTransactionsExist(
 	txids: [string]
 ): Promise<TransactionRequest> {
-	const allObjects = await db.DB.get("hashobjects");
 	let missingTransactions: [string];
-	for (let txid in txids) {
-		if (!allObjects[txid]) {
+	for (let txid of txids) {
+		try {
+			await db.TRANSACTIONS.get(txid);
+		} catch (err) {
 			missingTransactions.push(txid);
 		}
 	}
@@ -121,10 +174,23 @@ export async function correspondingTransactionsExist(
 
 const fakeBlock = {
 	nonce: "Monkey",
-	txids: [1, 2],
+	txids: ["MOnkeyyys", 2],
+};
+
+const genesis = {
+	nonce: "c5ee71be4ca85b160d352923a84f86f44b7fc4fe60002214bc1236ceedc5c615",
+	T: "00000002af000000000000000000000000000000000000000000000000000000",
+	created: 1649827795114,
+	miner: "svatsan",
+	note: "First block. Yayy, I have 50 bu now!!",
+	previd: "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
+	txids: ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"],
+	type: "block",
 };
 
 // console.log(validateBlockFormat(fakeBlock));
 (async () => {
-	console.log(await correspondingTransactionsExist([""]));
+	console.log(await validateBlock(genesis));
 })();
+
+// console.log(validateBlock(fakeBlock));

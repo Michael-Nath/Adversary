@@ -74,6 +74,7 @@ export interface VerificationResponse {
 	valid?: boolean;
 	msg?: string;
 	obj?: Transaction;
+	data?: Object;
 }
 
 export interface TransactionRequest {
