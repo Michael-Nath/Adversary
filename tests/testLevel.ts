@@ -1,4 +1,4 @@
-import { TRANSACTIONS, DB } from "./db";
+import { TRANSACTIONS, DB } from "../db";
 
 (async () => {
 	await TRANSACTIONS.put("hash1", "something");

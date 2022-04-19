@@ -158,15 +158,15 @@ export async function validateBlock(
 export async function correspondingTransactionsExist(
 	txids: [string]
 ): Promise<TransactionRequest> {
-	let missingTransactions: [string];
+	let missingTransactions: Set<string>;
 	for (let txid of txids) {
 		try {
 			await db.TRANSACTIONS.get(txid);
 		} catch (err) {
-			missingTransactions.push(txid);
+			missingTransactions.add(txid);
 		}
 	}
-	if (missingTransactions.length > 0) {
+	if (missingTransactions.size > 0) {
 		return { missing: true, txids: missingTransactions };
 	}
 	return { missing: false, txids: missingTransactions };

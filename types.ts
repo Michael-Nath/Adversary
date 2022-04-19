@@ -79,7 +79,7 @@ export interface VerificationResponse {
 
 export interface TransactionRequest {
 	missing: boolean;
-	txids: [string];
+	txids: Set<string>;
 }
 
 export type HashToObjectMap = Map<string, ApplicationObject>;
