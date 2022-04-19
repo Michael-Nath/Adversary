@@ -108,6 +108,11 @@ function transactionIsFormattedCorrectly(
 				valid: false,
 				msg: "Error: sig key must be present in every input.",
 			};
+		}else if (input["sig"] == null) {
+			return {
+				valid: false,
+				msg: "Error: sig key must not be null.",
+			};
 		}
 		if (!isHex(input.sig)) {
 			return {
