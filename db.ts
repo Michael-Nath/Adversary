@@ -1,29 +1,15 @@
 import { createObjectID } from "./blockUtils";
-import { Block, Transaction } from "types"
-import level from "level-ts"
+import { Block, Transaction } from "types";
+const Level = require("level");
+const sub = require("subleveldown");
 
 const DATABASE_PATH = "./database";
-
-export const DB = new level(DATABASE_PATH);
-
-
-export async function initializeStore() {
-	if (!(await DB.exists("peers"))) {
-		await DB.put("peers", {});
-	}
-	if (!(await DB.exists("hashobjects"))) {
-		await DB.put("hashobjects", {});
-	}
-}
-
+export const DB = new Level(DATABASE_PATH);
+export const TRANSACTIONS = sub(DB, "transactions");
+export const PEERS = sub(DB, "peers");
 
 export async function resetStore() {
-	if (await DB.exists("peers")) {
-		await DB.del("peers");
-	}
-	if (await DB.exists("hashobjects")) {
-		await DB.del("hashobjects");
-	}
+	await DB.clear();
 }
 
 export function updateDBWithPeers(peers: Set<string> | Array<string>) {
@@ -48,7 +34,7 @@ export async function doesHashExist(hash: string) {
 	const allObjects = await DB.get("hashobjects");
 	for (let DBhash in allObjects) {
 		if (DBhash == hash) {
-			return { exists: true, obj: allObjects[DBhash] };
+			return { exists: true, data: allObjects[DBhash] };
 		}
 	}
 	return { exists: false };

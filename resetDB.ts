@@ -1,6 +1,5 @@
-import * as db from "./db"
+import * as db from "./db";
 
 (async () => {
-    await db.resetStore()
-    await db.initializeStore()
+	await db.resetStore();
 })();
