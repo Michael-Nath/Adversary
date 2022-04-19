@@ -65,6 +65,7 @@ export interface Block extends Object {
 	miner?: string;
 	T: string;
 	note?: string;
+	utxo?: Set<Outpoint>
 }
 
 export type ApplicationObject = Transaction | Block;

@@ -147,11 +147,12 @@ export async function validateBlock(
 			console.log(err);
 		}
 	}
-	if (coinbaseOutputValue > BLOCK_REWARD + (sumOutputValues - sumInputValues))
+	if (coinbaseOutputValue > BLOCK_REWARD + (sumOutputValues - sumInputValues)) {
 		return {
 			valid: false,
 			msg: "coinbase transaction does not satisfy law of conservation",
 		};
+	}	
 }
 
 // TODO: create function that takes a TransactionRequest object and sends a getpeers message asking for the missing transactions.
