@@ -12,7 +12,7 @@ import * as Constants from "./constants"
 import * as db from "./db"
 import * as fs from "fs";
 import * as path from "path";
-import { createObjectID } from "./blockUtils";
+import { createObjectID, handleIncomingValidatedBlock, validateBlock } from "./blockUtils";
 import { validateTransaction } from "./transactionUtils";
 import { nanoid } from 'nanoid'
 const canonicalize = require("canonicalize");
@@ -132,6 +132,16 @@ export async function addObject(socket: Net.Socket, response: Object) {
 		const isCoinbase: boolean = (obj["height"] != undefined)
 		const isBlock: boolean = obj["type"] == "block"
 
+		if(isBlock) {
+			const validationResponse = await validateBlock(obj);
+			const isValidBlock: boolean = validationResponse["valid"];
+			if(!hashResponse["exists"] && isValidBlock) {
+				gossipObject(obj);
+				handleIncomingValidatedBlock(obj);
+			}else if (obj["type"] == "transaction" && !isValidBlock) {
+				Utils.sendErrorMessage(socket, validationResponse["msg"])
+			}
+		}
 		if (!isCoinbase && !isBlock) {
 			const validationResponse = await validateTransaction(obj)
 			const isValidTransaction: boolean = obj["type"] == "transaction" && (validationResponse["valid"] || obj["height"] != undefined);
@@ -141,7 +151,8 @@ export async function addObject(socket: Net.Socket, response: Object) {
 			}else if (obj["type"] == "transaction" && !isValidTransaction) {
 				Utils.sendErrorMessage(socket, validationResponse["msg"])
 			}
-		} else {
+		} 
+		if(isCoinbase) {
 			if(!hashResponse["exists"]) {
 				gossipObject(obj);
 			}

@@ -7,6 +7,7 @@ const DATABASE_PATH = "./database";
 export const DB = new Level(DATABASE_PATH);
 export const TRANSACTIONS = sub(DB, "transactions");
 export const PEERS = sub(DB, "peers");
+export const BLOCKUTXOS = sub(DB, "blockutxos");
 
 export async function resetStore() {
 	await DB.clear();

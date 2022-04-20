@@ -3,6 +3,7 @@ import {
 	Block,
 	VerificationResponse,
 	TransactionRequest,
+	Outpoint,
 } from "./types";
 import type { Socket } from "net";
 import * as sha256 from "fast-sha256";
@@ -14,6 +15,7 @@ import {
 } from "./transactionUtils";
 import * as db from "./db";
 import { getPeers } from "discovery";
+import { applyBlockToUTXO } from "utxoUtils";
 const T_VALUE =
 	"00000002af000000000000000000000000000000000000000000000000000000";
 const BLOCK_REWARD = 50;
@@ -152,6 +154,17 @@ export async function validateBlock(
 			valid: false,
 			msg: "coinbase transaction does not satisfy law of conservation",
 		};
+	}	
+}
+
+// TODO: Add genesis block handling
+export async function handleIncomingValidatedBlock(block: Block) {
+	var utxoToBeUpdated = (await db.BLOCKUTXOS.get(block["previd"])) as Set<Outpoint>;
+	const utxoBlockAdditionResponse = await applyBlockToUTXO(block, utxoToBeUpdated);
+	if (utxoBlockAdditionResponse["valid"]) {
+		db.DB.merge("blockutxos", {[createObjectID(block)]: utxoToBeUpdated});
+	}else {
+		console.error("Unable to apply block to UTXO");
 	}	
 }
 
