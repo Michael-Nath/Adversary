@@ -45,10 +45,8 @@ export function getHello(socket: Net.Socket, peer: string, response: Object) {
 		socket.destroy();
 	} else {
 		(async () => {
-			const newPeerEntry = {};
-			newPeerEntry[peer] = [];
 			globalThis.connections.add(socket.id);
-			await db.DB.merge("peers", newPeerEntry);
+			await db.PEERS.put(peer, []);
 		})();
 	}
 }
@@ -133,9 +131,6 @@ export async function addObject(socket: Net.Socket, response: Object) {
 	(async () => {
 		const objectHash = createObjectID(obj);
 		const hashResponse = await db.doesHashExist(objectHash);
-		let stillMissingTransactions = false;
-		console.log("ADDING OBJECT WITH RESPONSE:");
-		console.log(hashResponse);
 		console.log(obj);
 		console.log(createObjectID(obj));
 
@@ -158,6 +153,7 @@ export async function addObject(socket: Net.Socket, response: Object) {
 				gossipObject(obj);
 			} else if (obj["type"] == "transaction" && !isValidTransaction) {
 				Utils.sendErrorMessage(socket, validationResponse["msg"]);
+				return;
 			}
 		} else {
 			if (!hashResponse["exists"]) {
@@ -183,27 +179,35 @@ export async function addObject(socket: Net.Socket, response: Object) {
 					};
 					socket.write(canonicalize(getObjectMessage) + "\n");
 				}
-			} 
-			setTimeout(() => {
-				if (globalThis.pendingBlocks[objectHash].size != 0) {
-					stillMissingTransactions = true;
+				setTimeout(async () => {
+					if (globalThis.pendingBlocks[objectHash].size != 0) {
+						Utils.sendErrorMessage(
+							socket,
+							"Did not receive missing transactions in time."
+						);
+					} else {
+						const blockValidateResponse = await validateBlock(obj);
+						if (!blockValidateResponse.valid) {
+							Utils.sendErrorMessage(socket, blockValidateResponse.msg);
+						} else {
+							console.log("ADDING OBJECT TO DB");
+							gossipObject(obj);
+							db.updateDBWithObject(obj);
+						}
+					}
+				}, 5000);
+			} else {
+				console.log("BALOOGA");
+				const blockValidateResponse = await validateBlock(obj);
+				if (!blockValidateResponse.valid) {
+					Utils.sendErrorMessage(socket, blockValidateResponse.msg);
+					return;
 				}
-			}, 5000);
-			if (stillMissingTransactions) {
-				Utils.sendErrorMessage(
-					socket,
-					"Did not receive missing transactions in time."
-				);
-				return;
+				console.log("ADDING OBJECT TO DB");
+				gossipObject(obj);
+				db.updateDBWithObject(obj);
 			}
-			const blockValidateResponse = await validateBlock(obj);
-			if (!blockValidateResponse.valid) {
-				Utils.sendErrorMessage(socket, blockValidateResponse.msg);
-				return;
-			}
-			gossipObject(obj);
 		}
-		db.updateDBWithObject(obj);
 	})();
 }
 

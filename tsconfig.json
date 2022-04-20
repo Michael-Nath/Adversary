@@ -16,5 +16,4 @@
 		"outDir": "dist"
 	},
 	"compileOnSave": true,
-	"include": ["."]
 }

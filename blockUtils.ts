@@ -4,7 +4,6 @@ import {
 	VerificationResponse,
 	TransactionRequest,
 } from "./types";
-import type { Socket } from "net";
 import * as sha256 from "fast-sha256";
 import {
 	isCoinbase,
@@ -13,10 +12,9 @@ import {
 	validateTransaction,
 } from "./transactionUtils";
 import * as db from "./db";
-import { getPeers } from "discovery";
 const T_VALUE =
 	"00000002af000000000000000000000000000000000000000000000000000000";
-const BLOCK_REWARD = 50;
+const BLOCK_REWARD = 50000000000;
 const canonicalize = require("canonicalize");
 
 export function createObjectID(object: Block | Transaction): string {
@@ -38,7 +36,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 
 	for (const [key, value] of Object.entries(block)) {
 		if (!requiredKeys.includes(key) && !optionalKeys.includes(key)) {
-			return { valid: false, msg: `Unknown key ${key}` };
+			return { valid: false, msg: `Unknown key: ${key}` };
 		}
 	}
 	const blockifiedBlock = block as Block;
@@ -59,7 +57,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 	if (!isHex(blockifiedBlock["previd"])) {
 		return { valid: false, msg: "previd must be hex string" };
 	}
-	// 'created' key must be integer seconds
+	// 'created' key must be non-negative integer seconds
 	if (
 		typeof blockifiedBlock["created"] != "number" ||
 		blockifiedBlock["created"] <= 0 ||
@@ -124,12 +122,14 @@ export async function validateBlock(
 			const transaction = (await db.TRANSACTIONS.get(
 				txids[index]
 			)) as Transaction;
+
 			if (isCoinbase(transaction)) {
 				const coinbaseResponse = validateCoinbase(transaction, index);
 				if (!coinbaseResponse.valid) return coinbaseResponse;
 				coinbaseTXID = txids[index];
 				coinbaseOutputValue = coinbaseResponse["data"]["value"];
 			} else {
+				console.log("TRANSACTION ", transaction);
 				for (let input of transaction["inputs"]) {
 					if (input.outpoint == coinbaseTXID) {
 						return {
@@ -152,13 +152,14 @@ export async function validateBlock(
 			valid: false,
 			msg: "coinbase transaction does not satisfy law of conservation",
 		};
+	return { valid: true };
 }
 
 // TODO: create function that takes a TransactionRequest object and sends a getpeers message asking for the missing transactions.
 export async function correspondingTransactionsExist(
 	txids: [string]
 ): Promise<TransactionRequest> {
-	let missingTransactions: Set<string>;
+	let missingTransactions = new Set<string>();
 	for (let txid of txids) {
 		try {
 			await db.TRANSACTIONS.get(txid);
@@ -187,10 +188,3 @@ const genesis = {
 	txids: ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"],
 	type: "block",
 };
-
-// console.log(validateBlockFormat(fakeBlock));
-(async () => {
-	console.log(await validateBlock(genesis));
-})();
-
-// console.log(validateBlock(fakeBlock));
