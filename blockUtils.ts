@@ -5,7 +5,6 @@ import {
 	TransactionRequest,
 	Outpoint,
 } from "./types";
-import type { Socket } from "net";
 import * as sha256 from "fast-sha256";
 import {
 	isCoinbase,
@@ -15,10 +14,10 @@ import {
 } from "./transactionUtils";
 import * as db from "./db";
 import { getPeers } from "discovery";
-import { applyBlockToUTXO } from "utxoUtils";
+import { applyBlockToUTXO } from "./utxoUtils";
 const T_VALUE =
 	"00000002af000000000000000000000000000000000000000000000000000000";
-const BLOCK_REWARD = 50;
+const BLOCK_REWARD = 50000000000;
 const canonicalize = require("canonicalize");
 
 export function createObjectID(object: Block | Transaction): string {
@@ -40,7 +39,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 
 	for (const [key, value] of Object.entries(block)) {
 		if (!requiredKeys.includes(key) && !optionalKeys.includes(key)) {
-			return { valid: false, msg: `Unknown key ${key}` };
+			return { valid: false, msg: `Unknown key: ${key}` };
 		}
 	}
 	const blockifiedBlock = block as Block;
@@ -61,7 +60,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 	if (!isHex(blockifiedBlock["previd"])) {
 		return { valid: false, msg: "previd must be hex string" };
 	}
-	// 'created' key must be integer seconds
+	// 'created' key must be non-negative integer seconds
 	if (
 		typeof blockifiedBlock["created"] != "number" ||
 		blockifiedBlock["created"] <= 0 ||
@@ -119,6 +118,14 @@ export async function validateBlock(
 	let coinbaseOutputValue = 0;
 	let sumInputValues = 0;
 	let sumOutputValues = 0;
+	// check if parent block exists
+	const existenceResponse = await db.doesHashExist(block["previd"]);
+	if (!existenceResponse.exists) {
+		return {
+			valid: false,
+			msg: "Parent block does not exist",
+		};
+	}
 	// validate each transaction in the block
 	const txids: [string] = block["txids"];
 	for (let index = 0; index < txids.length; index++) {
@@ -126,12 +133,14 @@ export async function validateBlock(
 			const transaction = (await db.TRANSACTIONS.get(
 				txids[index]
 			)) as Transaction;
+
 			if (isCoinbase(transaction)) {
 				const coinbaseResponse = validateCoinbase(transaction, index);
 				if (!coinbaseResponse.valid) return coinbaseResponse;
 				coinbaseTXID = txids[index];
 				coinbaseOutputValue = coinbaseResponse["data"]["value"];
 			} else {
+				console.log("TRANSACTION ", transaction);
 				for (let input of transaction["inputs"]) {
 					if (input.outpoint == coinbaseTXID) {
 						return {
@@ -154,15 +163,15 @@ export async function validateBlock(
 			valid: false,
 			msg: "coinbase transaction does not satisfy law of conservation",
 		};
-	}	
+	}
+	return {valid: true};	
 }
 
-// TODO: Add genesis block handling
 export async function handleIncomingValidatedBlock(block: Block) {
-	var utxoToBeUpdated = (await db.BLOCKUTXOS.get(block["previd"])) as Set<Outpoint>;
+	var utxoToBeUpdated = (await db.BLOCKUTXOS.get(block["previd"])) as Array<Outpoint>;
 	const utxoBlockAdditionResponse = await applyBlockToUTXO(block, utxoToBeUpdated);
 	if (utxoBlockAdditionResponse["valid"]) {
-		db.DB.merge("blockutxos", {[createObjectID(block)]: utxoToBeUpdated});
+		db.BLOCKUTXOS.put(createObjectID(block), utxoBlockAdditionResponse["data"] as Array<Outpoint>);
 	}else {
 		console.error("Unable to apply block to UTXO");
 	}	
@@ -172,15 +181,15 @@ export async function handleIncomingValidatedBlock(block: Block) {
 export async function correspondingTransactionsExist(
 	txids: [string]
 ): Promise<TransactionRequest> {
-	let missingTransactions: [string];
+	let missingTransactions = new Set<string>();
 	for (let txid of txids) {
 		try {
 			await db.TRANSACTIONS.get(txid);
 		} catch (err) {
-			missingTransactions.push(txid);
+			missingTransactions.add(txid);
 		}
 	}
-	if (missingTransactions.length > 0) {
+	if (missingTransactions.size > 0) {
 		return { missing: true, txids: missingTransactions };
 	}
 	return { missing: false, txids: missingTransactions };
@@ -201,10 +210,3 @@ const genesis = {
 	txids: ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"],
 	type: "block",
 };
-
-// console.log(validateBlockFormat(fakeBlock));
-(async () => {
-	console.log(await validateBlock(genesis));
-})();
-
-// console.log(validateBlock(fakeBlock));

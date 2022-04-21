@@ -8,18 +8,24 @@
 import * as Net from "net";
 import * as Types from "./types";
 import * as Utils from "./utils";
-import * as Constants from "./constants"
-import * as db from "./db"
+import * as Constants from "./constants";
+import * as db from "./db";
 import * as fs from "fs";
 import * as path from "path";
-import { createObjectID, handleIncomingValidatedBlock, validateBlock } from "./blockUtils";
+import {
+	correspondingTransactionsExist,
+	createObjectID,
+	handleIncomingValidatedBlock,
+	validateBlock,
+	validateBlockFormat,
+} from "./blockUtils";
 import { validateTransaction } from "./transactionUtils";
-import { nanoid } from 'nanoid'
+import { nanoid } from "nanoid";
 const canonicalize = require("canonicalize");
-
 
 declare global {
 	var peerStatuses: {};
+	var pendingBlocks: Map<string, Set<string>>;
 }
 
 export function connectToNode(client: Net.Socket) {
@@ -27,11 +33,7 @@ export function connectToNode(client: Net.Socket) {
 	getPeers(client);
 }
 
-export function getHello(
-	socket: Net.Socket,
-	peer: string,
-	response: Object,
-) {
+export function getHello(socket: Net.Socket, peer: string, response: Object) {
 	let connectionExists;
 	connectionExists = peer in globalThis.connections;
 
@@ -44,10 +46,8 @@ export function getHello(
 		socket.destroy();
 	} else {
 		(async () => {
-			const newPeerEntry = {};
-			newPeerEntry[peer] = [];
 			globalThis.connections.add(socket.id);
-			await db.DB.merge("peers", newPeerEntry);
+			await db.PEERS.put(peer, []);
 		})();
 	}
 }
@@ -86,7 +86,9 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 	const hashOfObject = createObjectID(obj);
 	(async () => {
 		for (let peerToInformConnection of globalThis.sockets) {
-			peerToInformConnection.write(canonicalize({type: "ihaveobject", objectid: hashOfObject}) + "\n");
+			peerToInformConnection.write(
+				canonicalize({ type: "ihaveobject", objectid: hashOfObject }) + "\n"
+			);
 		}
 	})();
 }
@@ -94,27 +96,33 @@ export function gossipObject(obj: Types.Block | Types.Transaction) {
 export function retrieveObject(socket: Net.Socket, response: Object) {
 	const hash = response["data"]["objectid"];
 	(async () => {
-		const doesHashExist = (await db.doesHashExist(hash))["exists"]
+		const doesHashExist = (await db.doesHashExist(hash))["exists"];
 		if (!doesHashExist) {
-			const getObjectMessage: Types.HashObjectMessage = {type: "getobject", objectid: hash}
-			socket.write(canonicalize(getObjectMessage) + "\n")
-	   }
+			const getObjectMessage: Types.HashObjectMessage = {
+				type: "getobject",
+				objectid: hash,
+			};
+			socket.write(canonicalize(getObjectMessage) + "\n");
+		}
 	})();
 }
 
 export function sendObject(socket: Net.Socket, response: Object) {
 	const hash = response["data"]["objectid"];
-	
+
 	(async () => {
-		const hashResponse = await db.doesHashExist(hash)
-		
+		const hashResponse = await db.doesHashExist(hash);
+
 		console.log("SENDING OBJECT WITH HASH RESPONSE:");
 		console.log(hashResponse);
 		console.log(response);
 
 		if (hashResponse["exists"]) {
-			const objectMessage: Types.ObjectMessage = {type: "object", object: hashResponse["obj"]}
-			socket.write(canonicalize(objectMessage) + "\n")
+			const objectMessage: Types.ObjectMessage = {
+				type: "object",
+				object: hashResponse["obj"],
+			};
+			socket.write(canonicalize(objectMessage) + "\n");
 		}
 	})();
 }
@@ -122,44 +130,89 @@ export function sendObject(socket: Net.Socket, response: Object) {
 export async function addObject(socket: Net.Socket, response: Object) {
 	const obj = response["data"]["object"];
 	(async () => {
-		const hashResponse = await db.doesHashExist(createObjectID(obj))
-		
-		console.log("ADDING OBJECT WITH RESPONSE:");
-		console.log(hashResponse);
+		const objectHash = createObjectID(obj);
+		const hashResponse = await db.doesHashExist(objectHash);
 		console.log(obj);
-		console.log(createObjectID(obj))
-		
-		const isCoinbase: boolean = (obj["height"] != undefined)
-		const isBlock: boolean = obj["type"] == "block"
+		console.log(createObjectID(obj));
 
-		if(isBlock) {
-			const validationResponse = await validateBlock(obj);
-			const isValidBlock: boolean = validationResponse["valid"];
-			if(!hashResponse["exists"] && isValidBlock) {
+		const isCoinbase: boolean = obj["height"] != undefined;
+		const isBlock: boolean = obj["type"] == "block";
+		if (!isBlock) {
+			for (let blockid in globalThis.pendingBlocks) {
+				if (globalThis.pendingBlocks[blockid].has(objectHash)) {
+					globalThis.pendingBlocks[blockid].delete(objectHash);
+				}
+			}
+		}
+		if (isCoinbase) {
+			if (!hashResponse["exists"]) {
 				gossipObject(obj);
+				db.updateDBWithObject(obj);
+				return;
+			}
+		} else if (!isBlock) {
+			const validationResponse = await validateTransaction(obj);
+			const isValidTransaction: boolean =
+				obj["type"] == "transaction" &&
+				(validationResponse["valid"] || isCoinbase);
+
+			if (!hashResponse["exists"] && isValidTransaction) {
+				gossipObject(obj);
+				db.updateDBWithObject(obj);
+				return;
+			} else if (obj["type"] == "transaction" && !isValidTransaction) {
+				Utils.sendErrorMessage(socket, validationResponse["msg"]);
+				return;
+			}
+		} else if (isBlock) {
+			const blockFormatResponse = validateBlockFormat(obj);
+			if (!blockFormatResponse.valid) {
+				Utils.sendErrorMessage(socket, blockFormatResponse["msg"]);
+				return;
+			}
+			const correspondingTransactionsResponse =
+				await correspondingTransactionsExist(obj["txids"]);
+			if (correspondingTransactionsResponse["txids"].size > 0) {
+				globalThis.pendingBlocks[objectHash] =
+					correspondingTransactionsResponse["txids"];
+				for (let txid of correspondingTransactionsResponse["txids"]) {
+					const getObjectMessage: Types.HashObjectMessage = {
+						type: "getobject",
+						objectid: txid,
+					};
+					socket.write(canonicalize(getObjectMessage) + "\n");
+				}
+				setTimeout(async () => {
+					if (globalThis.pendingBlocks[objectHash].size != 0) {
+						Utils.sendErrorMessage(
+							socket,
+							"Did not receive missing transactions in time."
+						);
+					} else {
+						const blockValidateResponse = await validateBlock(obj);
+						if (!blockValidateResponse.valid) {
+							Utils.sendErrorMessage(socket, blockValidateResponse.msg);
+						} else {
+							console.log("ADDING OBJECT TO DB");
+							gossipObject(obj);
+							db.updateDBWithObject(obj);
+						}
+					}
+				}, 5000);
+			} else {
+				const blockValidateResponse = await validateBlock(obj);
+				if (!blockValidateResponse.valid) {
+					Utils.sendErrorMessage(socket, blockValidateResponse.msg);
+					return;
+				}
+				console.log("ADDING OBJECT TO DB");
 				handleIncomingValidatedBlock(obj);
-			}else if (obj["type"] == "transaction" && !isValidBlock) {
-				Utils.sendErrorMessage(socket, validationResponse["msg"])
+				gossipObject(obj);
+				db.updateDBWithObject(obj);
 			}
 		}
-		if (!isCoinbase && !isBlock) {
-			const validationResponse = await validateTransaction(obj)
-			const isValidTransaction: boolean = obj["type"] == "transaction" && (validationResponse["valid"] || obj["height"] != undefined);
-
-			if(!hashResponse["exists"] && isValidTransaction) {
-				gossipObject(obj);
-			}else if (obj["type"] == "transaction" && !isValidTransaction) {
-				Utils.sendErrorMessage(socket, validationResponse["msg"])
-			}
-		} 
-		if(isCoinbase) {
-			if(!hashResponse["exists"]) {
-				gossipObject(obj);
-			}
-		}
-		db.updateDBWithObject(obj);
 	})();
-} 
+}
 
 export function obtainBootstrappingPeers(): Set<string> | void {
 	try {

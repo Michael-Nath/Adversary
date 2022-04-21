@@ -40,7 +40,7 @@ export interface TransactionInput {
 	sig: string;
 }
 
-export interface Outpoint {
+export interface Outpoint extends Object {
 	txid: string;
 	index: number;
 }
@@ -59,7 +59,8 @@ export interface Transaction extends Object {
 
 export interface Block extends Object {
 	type: "block";
-	txids: [string];
+	txids: string[];
+	created: number
 	nonce: string;
 	previd: string;
 	miner?: string;
@@ -74,12 +75,12 @@ export interface VerificationResponse {
 	valid?: boolean;
 	msg?: string;
 	obj?: Transaction;
-	data?: Object;
+	data?: any;
 }
 
 export interface TransactionRequest {
 	missing: boolean;
-	txids: [string];
+	txids: Set<string>;
 }
 
 export type HashToObjectMap = Map<string, ApplicationObject>;
