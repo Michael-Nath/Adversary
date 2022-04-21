@@ -143,25 +143,27 @@ export async function addObject(socket: Net.Socket, response: Object) {
 				}
 			}
 		}
-		if (!isCoinbase && !isBlock) {
+		if (isCoinbase) {
+			if (!hashResponse["exists"]) {
+				gossipObject(obj);
+				db.updateDBWithObject(obj);
+				return;
+			}
+		} else if (!isBlock) {
 			const validationResponse = await validateTransaction(obj);
 			const isValidTransaction: boolean =
 				obj["type"] == "transaction" &&
-				(validationResponse["valid"] || obj["height"] != undefined);
+				(validationResponse["valid"] || isCoinbase);
 
 			if (!hashResponse["exists"] && isValidTransaction) {
 				gossipObject(obj);
+				db.updateDBWithObject(obj);
+				return;
 			} else if (obj["type"] == "transaction" && !isValidTransaction) {
 				Utils.sendErrorMessage(socket, validationResponse["msg"]);
 				return;
 			}
-		} else {
-			if (!hashResponse["exists"]) {
-				gossipObject(obj);
-			}
-		}
-
-		if (isBlock) {
+		} else if (isBlock) {
 			const blockFormatResponse = validateBlockFormat(obj);
 			if (!blockFormatResponse.valid) {
 				Utils.sendErrorMessage(socket, blockFormatResponse["msg"]);
@@ -197,7 +199,6 @@ export async function addObject(socket: Net.Socket, response: Object) {
 					}
 				}, 5000);
 			} else {
-				console.log("BALOOGA");
 				const blockValidateResponse = await validateBlock(obj);
 				if (!blockValidateResponse.valid) {
 					Utils.sendErrorMessage(socket, blockValidateResponse.msg);

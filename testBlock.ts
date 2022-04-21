@@ -10,7 +10,7 @@ import type { Block, Transaction } from "./types";
 //     }
 // }
 
-const GENESIS = {
+const BLOCK = {
 	nonce: "c5ee71be4ca85b160d352923a84f86f44b7fc4fe60002214bc1236ceedc5c615",
 	T: "00000002af000000000000000000000000000000000000000000000000000000",
 	created: 1649827795114,
@@ -33,8 +33,8 @@ const TX = {
 	],
 };
 
-const response = validateBlockFormat(GENESIS);
+const response = validateBlockFormat(BLOCK);
 const txObj = { object: TX, type: "object" };
-const blockObj = { object: GENESIS, type: "object" };
+const blockObj = { object: BLOCK, type: "object" };
 console.log(JSON.stringify(txObj));
 console.log(JSON.stringify(blockObj));

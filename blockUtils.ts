@@ -115,6 +115,14 @@ export async function validateBlock(
 	let coinbaseOutputValue = 0;
 	let sumInputValues = 0;
 	let sumOutputValues = 0;
+	// check if parent block exists
+	const existenceResponse = await db.doesHashExist(block["previd"]);
+	if (!existenceResponse.exists) {
+		return {
+			valid: false,
+			msg: "Parent block does not exist",
+		};
+	}
 	// validate each transaction in the block
 	const txids: [string] = block["txids"];
 	for (let index = 0; index < txids.length; index++) {

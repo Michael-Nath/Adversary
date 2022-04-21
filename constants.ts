@@ -1,5 +1,4 @@
-import { HelloMessage } from "types";
-
+import type { HelloMessage, Block } from "types";
 export const HELLO_ERROR = "";
 export const TYPE_ERROR = "Unsupported message type received\n";
 export const FORMAT_ERROR = "Invalid message format\n";
@@ -31,3 +30,14 @@ export var BOOTSTRAPPING_PEERS: Set<string> = new Set([
 	"139.162.130.195",
 	"localhost",
 ]);
+
+export const GENESIS_BLOCK: Block = {
+	T: "00000002af000000000000000000000000000000000000000000000000000000",
+	created: 1624219079,
+	miner: "dionyziz",
+	nonce: "0000000000000000000000000000000000000000000000000000002634878840",
+	note: "The Economist 2021-06-20: Crypto-miners are probably to blame for the graphics-chip shortage",
+	previd: null,
+	txids: [],
+	type: "block",
+};

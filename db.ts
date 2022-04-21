@@ -1,5 +1,6 @@
 import { createObjectID } from "./blockUtils";
 import { Block, Transaction } from "types";
+import { GENESIS_BLOCK } from "./constants";
 const Level = require("level");
 const sub = require("subleveldown");
 
@@ -11,6 +12,8 @@ export const BLOCKS = sub(DB, "blocks", { valueEncoding: "json" });
 
 export async function resetStore() {
 	await DB.clear();
+	const genesisHash = createObjectID(GENESIS_BLOCK);
+	await BLOCKS.put(genesisHash, GENESIS_BLOCK);
 }
 
 export function updateDBWithPeers(peers: Set<string> | Array<string>) {
