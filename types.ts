@@ -59,7 +59,8 @@ export interface Transaction extends Object {
 
 export interface Block extends Object {
 	type: "block";
-	txids: [string];
+	txids: string[];
+	created: number
 	nonce: string;
 	previd: string;
 	miner?: string;
@@ -79,7 +80,7 @@ export interface VerificationResponse {
 
 export interface TransactionRequest {
 	missing: boolean;
-	txids: [string];
+	txids: Set<string>;
 }
 
 export type HashToObjectMap = Map<string, ApplicationObject>;

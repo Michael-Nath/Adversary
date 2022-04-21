@@ -4,25 +4,28 @@ import {
 	TransactionInput,
 	TransactionOutput,
 	Outpoint,
-	HashToObjectMap,
 } from "types";
-import { DB } from "./db";
+import { DB, TRANSACTIONS } from "./db";
 import * as ed from "@noble/ed25519";
+import { createObjectID } from "blockUtils";
 
 export async function outpointExists(
 	outpoint: Outpoint
 ): Promise<VerificationResponse> {
-	const allIDS: HashToObjectMap = await DB.get("hashobjects");
-	for (let id in allIDS) {
-		if (id == outpoint.txid) {
-			return { exists: true, obj: allIDS[id] };
-		}
+	try {
+		const transaction = await TRANSACTIONS.get(outpoint.txid);
+		console.log("OUTPOINT");
+		console.log(transaction);
+		return { exists: true, obj: transaction };
+	} catch {
+		return { exists: false };
 	}
-	return { exists: false };
 }
 
 export function isCoinbase(transaction: Transaction): boolean {
-	return transaction["height"] && !transaction["inputs"];
+	return (
+		transaction["height"] != undefined && transaction["inputs"] == undefined
+	);
 }
 export function validateCoinbase(
 	coinbase: Transaction,
@@ -54,14 +57,15 @@ export function validateCoinbase(
 export function getUnsignedTransactionFrom(
 	transaction: Transaction
 ): Transaction {
-	console.log("TRYING TO UNSIGN TRANSACTION:");
-	console.log(transaction);
+	// console.log("TRYING TO UNSIGN TRANSACTION:");
+	// console.log(transaction);
 	const unsignedTransaction = JSON.parse(
 		JSON.stringify(transaction)
 	) as Transaction;
-	unsignedTransaction["inputs"].forEach((input) => {
-		input.sig = null;
-	});
+	unsignedTransaction["inputs"] &&
+		unsignedTransaction["inputs"].forEach((input) => {
+			input.sig = null;
+		});
 	return unsignedTransaction;
 }
 
@@ -95,8 +99,8 @@ function transactionIsFormattedCorrectly(
 	// each input must contain keys "outpoint" and "sig"
 	// each input must have a signature that is hexadecimal string
 	for (let input of transaction["inputs"]) {
-		console.log("INPUT:");
-		console.log(input);
+		// console.log("INPUT:");
+		// console.log(input);
 		if (!input.outpoint) {
 			return {
 				valid: false,
@@ -108,7 +112,7 @@ function transactionIsFormattedCorrectly(
 				valid: false,
 				msg: "Error: sig key must be present in every input.",
 			};
-		}else if (input["sig"] == null) {
+		} else if (input["sig"] == null) {
 			return {
 				valid: false,
 				msg: "Error: sig key must not be null.",
@@ -165,7 +169,9 @@ export async function validateTransaction(
 		if (!response["exists"]) {
 			return { valid: false, msg: "Error: outpoint does not exist." };
 		}
+
 		const prevTransactionBody: Transaction = response["obj"];
+		console.log("PREV TRANSACTION BODY: ", JSON.stringify(prevTransactionBody));
 		if (outpoint.index >= prevTransactionBody.outputs.length) {
 			return {
 				valid: false,
@@ -211,3 +217,23 @@ export async function validateTransaction(
 	}
 	return { valid: true, data: { inputValues, outputValues } };
 }
+
+// export function createTransactionsFrom(txids: [string]): [Transaction] {
+// 	(async () => {
+// 		const privateKey = ed.utils.randomPrivateKey();
+// 		const publicKey = await ed.getPublicKey(privateKey);
+// 		console.log(Buffer.from(publicKey).toString("hex"));
+// 		const coinbase = {
+// 			type: "transaction",
+// 			height: 128,
+// 			outputs: [
+// 				{
+// 					pubkey:
+// 						"077a2683d776a71139fd4db4d00c16703ba0753fc8bdc4bd6fc56614e659cde3",
+// 					value: 50000000000,
+// 				},
+// 			],
+// 		};
+// 	})();
+// 	return;
+// }
