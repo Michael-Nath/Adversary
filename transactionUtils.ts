@@ -127,7 +127,7 @@ function transactionIsFormattedCorrectly(
 	}
 
 	for (let output of transaction["outputs"]) {
-		if (!output.pubkey || !output.value) {
+		if (output.pubkey == undefined || output.value == undefined) {
 			return {
 				valid: false,
 				msg: "Error: pubkey and value key must be present in every output.",

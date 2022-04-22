@@ -3,6 +3,8 @@ import {
 	Block,
 	VerificationResponse,
 	TransactionRequest,
+	Outpoint,
+	ValidationMessage,
 } from "./types";
 import * as sha256 from "fast-sha256";
 import {
@@ -12,9 +14,11 @@ import {
 	validateTransaction,
 } from "./transactionUtils";
 import * as db from "./db";
+import { getPeers } from "discovery";
+import { applyBlockToUTXO } from "./utxoUtils";
 const T_VALUE =
 	"00000002af000000000000000000000000000000000000000000000000000000";
-const BLOCK_REWARD = 50000000000;
+const BLOCK_REWARD = 50000000000000;
 const canonicalize = require("canonicalize");
 
 export function createObjectID(object: Block | Transaction): string {
@@ -29,7 +33,9 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 	const requiredKeys = ["txids", "nonce", "previd", "T", "created", "type"];
 	const optionalKeys = ["miner", "note"];
 	for (let key of requiredKeys) {
-		if (!block[key]) {
+		if (block[key] === undefined) {
+			console.log("MISSING KEY IS");
+			console.log(key);
 			return { valid: false, msg: `not all required keys in block` };
 		}
 	}
@@ -60,7 +66,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 	// 'created' key must be non-negative integer seconds
 	if (
 		typeof blockifiedBlock["created"] != "number" ||
-		blockifiedBlock["created"] <= 0 ||
+		blockifiedBlock["created"] < 0 ||
 		Math.floor(blockifiedBlock["created"]) != blockifiedBlock["created"]
 	) {
 		return { valid: false, msg: "created key must be integer timestamp" };
@@ -70,7 +76,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 		return { valid: false, msg: "target must be hex string" };
 	}
 	if (
-		blockifiedBlock["miner"] &&
+		blockifiedBlock["miner"] != undefined &&
 		(typeof blockifiedBlock["miner"] != "string" ||
 			blockifiedBlock["miner"].length > 128)
 	) {
@@ -80,7 +86,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 		};
 	}
 	if (
-		blockifiedBlock["note"] &&
+		blockifiedBlock["note"] != undefined &&
 		(typeof blockifiedBlock["note"] != "string" ||
 			blockifiedBlock["note"].length > 128)
 	) {
@@ -90,7 +96,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 		};
 	}
 	// Check target
-	if (!blockifiedBlock["T"] || blockifiedBlock["T"] != T_VALUE) {
+	if (blockifiedBlock["T"] == undefined || blockifiedBlock["T"] != T_VALUE) {
 		return {
 			valid: false,
 			msg: "Invalid target",
@@ -155,12 +161,24 @@ export async function validateBlock(
 			console.log(err);
 		}
 	}
-	if (coinbaseOutputValue > BLOCK_REWARD + (sumOutputValues - sumInputValues))
+	if (coinbaseOutputValue > BLOCK_REWARD + (sumInputValues - sumOutputValues)) {
 		return {
 			valid: false,
 			msg: "coinbase transaction does not satisfy law of conservation",
 		};
-	return { valid: true };
+	}
+	return {valid: true};	
+}
+
+export async function handleIncomingValidatedBlock(block: Block): Promise<VerificationResponse> {
+	var utxoToBeUpdated = (await db.BLOCKUTXOS.get(block["previd"])) as Array<Outpoint>;
+	const utxoBlockAdditionResponse = await applyBlockToUTXO(block, utxoToBeUpdated);
+	if (utxoBlockAdditionResponse["valid"]) {
+		db.BLOCKUTXOS.put(createObjectID(block), utxoBlockAdditionResponse["data"] as Array<Outpoint>);
+		return {valid: true};
+	}else {
+		return utxoBlockAdditionResponse;
+	}	
 }
 
 // TODO: create function that takes a TransactionRequest object and sends a getpeers message asking for the missing transactions.
