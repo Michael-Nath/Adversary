@@ -8,6 +8,8 @@
 // TODO:
 // Make data property of ValidationMessage work with JSON
 
+import { Socket } from "net";
+
 export interface ValidationMessage {
 	valid: boolean;
 	error: ErrorMessage;
@@ -55,6 +57,12 @@ export interface Transaction extends Object {
 	inputs?: [TransactionInput]; // coinbase txs have no inputs
 	height?: number; // non-coinbase txs have no height key
 	outputs: [TransactionOutput];
+}
+
+export interface PendingBlock extends Object {
+	block: Block;
+	socket: Socket;
+	txids: Set<String>;
 }
 
 export interface Block extends Object {

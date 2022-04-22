@@ -25,7 +25,7 @@ const canonicalize = require("canonicalize");
 
 declare global {
 	var peerStatuses: {};
-	var pendingBlocks: Map<string, Set<string>>;
+	var pendingBlocks: Map<string, Types.PendingBlock>;
 }
 
 export function connectToNode(client: Net.Socket) {
@@ -66,19 +66,21 @@ export function updatePeers(socket: Net.Socket, response: Object) {
 
 export function sendPeers(client: Net.Socket, response: Object) {
 	const peersArray = [];
-	let peers;
 	(async () => {
-		peers = await db.DB.get("peers");
-		for (let peer in peers) {
-			let peerString = peer;
-			if (!peer.includes(":")) peerString += `:${Constants.PORT}`;
+		console.log("OBTAINING PEERS AND SENDING");
+		db.PEERS.createReadStream().on('data', function(data) {
+			let peerString = data.key
+			if (!peerString.includes(":")) peerString += `:${Constants.PORT}`;
 			peersArray.push(peerString);
-		}
-		const peersMessage = {
-			type: "peers",
-			peers: peersArray,
-		};
-		client.write(canonicalize(peersMessage) + "\n");
+		}).on('error', function(err) {
+            return console.log('Unable to read data stream!', err)
+        }).on('close', function() {
+			const peersMessage = {
+				type: "peers",
+				peers: peersArray,
+			};
+			client.write(canonicalize(peersMessage) + "\n");
+        });
 	})();
 }
 
@@ -127,28 +129,40 @@ export function sendObject(socket: Net.Socket, response: Object) {
 	})();
 }
 
+async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
+	const blockValidateResponse = await validateBlock(block);
+	if (!blockValidateResponse.valid) {
+		Utils.sendErrorMessage(socket, blockValidateResponse.msg);
+		return;
+	}
+	console.log("ADDING OBJECT TO DB");
+	const processBlockUTXO = await handleIncomingValidatedBlock(block);
+	if (!processBlockUTXO.valid) {
+		Utils.sendErrorMessage(socket, processBlockUTXO.msg);
+		return;
+	}
+	gossipObject(block);
+	db.updateDBWithObject(block);
+} 
+
 export async function addObject(socket: Net.Socket, response: Object) {
 	const obj = response["data"]["object"];
 	(async () => {
 		const objectHash = createObjectID(obj);
+		if (objectHash == createObjectID(Constants.GENESIS_BLOCK)) {
+			return;
+		}
 		const hashResponse = await db.doesHashExist(objectHash);
 		console.log(obj);
 		console.log(createObjectID(obj));
 
 		const isCoinbase: boolean = obj["height"] != undefined;
 		const isBlock: boolean = obj["type"] == "block";
-		if (!isBlock) {
-			for (let blockid in globalThis.pendingBlocks) {
-				if (globalThis.pendingBlocks[blockid].has(objectHash)) {
-					globalThis.pendingBlocks[blockid].delete(objectHash);
-				}
-			}
-		}
+	
 		if (isCoinbase) {
 			if (!hashResponse["exists"]) {
 				gossipObject(obj);
-				db.updateDBWithObject(obj);
-				return;
+				await db.updateDBWithObjectWithPromise(obj);
 			}
 		} else if (!isBlock) {
 			const validationResponse = await validateTransaction(obj);
@@ -158,8 +172,7 @@ export async function addObject(socket: Net.Socket, response: Object) {
 
 			if (!hashResponse["exists"] && isValidTransaction) {
 				gossipObject(obj);
-				db.updateDBWithObject(obj);
-				return;
+				await db.updateDBWithObjectWithPromise(obj);
 			} else if (obj["type"] == "transaction" && !isValidTransaction) {
 				Utils.sendErrorMessage(socket, validationResponse["msg"]);
 				return;
@@ -173,8 +186,7 @@ export async function addObject(socket: Net.Socket, response: Object) {
 			const correspondingTransactionsResponse =
 				await correspondingTransactionsExist(obj["txids"]);
 			if (correspondingTransactionsResponse["txids"].size > 0) {
-				globalThis.pendingBlocks[objectHash] =
-					correspondingTransactionsResponse["txids"];
+				globalThis.pendingBlocks.set(objectHash, {block: (obj as Types.Block), socket: socket, txids: correspondingTransactionsResponse["txids"]});
 				for (let txid of correspondingTransactionsResponse["txids"]) {
 					const getObjectMessage: Types.HashObjectMessage = {
 						type: "getobject",
@@ -183,32 +195,34 @@ export async function addObject(socket: Net.Socket, response: Object) {
 					socket.write(canonicalize(getObjectMessage) + "\n");
 				}
 				setTimeout(async () => {
-					if (globalThis.pendingBlocks[objectHash].size != 0) {
+					if (globalThis.pendingBlocks.has(objectHash) && globalThis.pendingBlocks.get(objectHash).txids.size != 0) {
+						globalThis.pendingBlocks.delete(objectHash);
 						Utils.sendErrorMessage(
 							socket,
 							"Did not receive missing transactions in time."
 						);
-					} else {
-						const blockValidateResponse = await validateBlock(obj);
-						if (!blockValidateResponse.valid) {
-							Utils.sendErrorMessage(socket, blockValidateResponse.msg);
-						} else {
-							console.log("ADDING OBJECT TO DB");
-							gossipObject(obj);
-							db.updateDBWithObject(obj);
-						}
 					}
 				}, 5000);
 			} else {
-				const blockValidateResponse = await validateBlock(obj);
-				if (!blockValidateResponse.valid) {
-					Utils.sendErrorMessage(socket, blockValidateResponse.msg);
-					return;
+				validateUTXOAndGossipBlock(socket, obj);
+			}
+		}
+		console.log("OUTPUTTING PENDING BLOCKS");
+		console.log(globalThis.pendingBlocks)
+		if (!isBlock) {
+			for (let [blockid,] of globalThis.pendingBlocks) {
+				console.log("PENDING BLOCKS BEFORE");
+				console.log(globalThis.pendingBlocks);
+
+				if (globalThis.pendingBlocks.get(blockid).txids.has(objectHash)) {
+					console.log("FILLING IN MISSING TRANSACTION");
+					globalThis.pendingBlocks.get(blockid).txids.delete(objectHash);
+					console.log("PENDING BLOCKS AFTER");
+					console.log(globalThis.pendingBlocks);
+					if (globalThis.pendingBlocks.get(blockid).txids.size == 0) {
+						validateUTXOAndGossipBlock(globalThis.pendingBlocks.get(blockid).socket, globalThis.pendingBlocks.get(blockid).block).then(() => {globalThis.pendingBlocks.delete(blockid);});
+					}
 				}
-				console.log("ADDING OBJECT TO DB");
-				handleIncomingValidatedBlock(obj);
-				gossipObject(obj);
-				db.updateDBWithObject(obj);
 			}
 		}
 	})();

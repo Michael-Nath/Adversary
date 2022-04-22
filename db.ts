@@ -41,14 +41,23 @@ export function updateDBWithObject(obj: Block | Transaction) {
 	})();
 }
 
+export async function updateDBWithObjectWithPromise(obj: Block | Transaction): Promise<void> {
+	const hashOfObject = createObjectID(obj);
+	if (obj.type == "block") {
+		await BLOCKS.put(hashOfObject, obj);
+	} else {
+		await TRANSACTIONS.put(hashOfObject, obj);
+	}
+}
+
 export async function doesHashExist(hash: string) {
 	try {
-		await TRANSACTIONS.get(hash);
-		return { exists: true };
+		const transaction = await TRANSACTIONS.get(hash);
+		return { exists: true, obj: transaction };
 	} catch (err) {}
 	try {
-		await BLOCKS.get(hash);
-		return { exists: true };
+		const block = await BLOCKS.get(hash);
+		return { exists: true, obj: block };
 	} catch (err) {}
 	return { exists: false };
 }
