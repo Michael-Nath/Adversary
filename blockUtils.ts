@@ -112,11 +112,21 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 	return { valid: true };
 }
 
+function parentBlockCallback(previd: string): Promise<string> {
+	return new Promise((resolve) => {
+		globalThis.emitter.on(previd, () => {
+			resolve("Parent found");
+		});
+		setTimeout(() => {
+			globalThis.emitter.removeAllListeners(previd);
+			resolve("Parent not found");
+		}, 5000);
+	});
+}
+
 export async function validateBlock(
 	block: Object
 ): Promise<VerificationResponse> {
-	const response = validateBlockFormat(block);
-	if (!response.valid) return response;
 	let coinbaseTXID;
 	let coinbaseOutputValue = 0;
 	let sumInputValues = 0;
@@ -124,61 +134,92 @@ export async function validateBlock(
 	// check if parent block exists
 	const existenceResponse = await db.doesHashExist(block["previd"]);
 	if (!existenceResponse.exists) {
-		return {
-			valid: false,
-			msg: "Parent block does not exist",
-		};
-	}
-	// validate each transaction in the block
-	const txids: [string] = block["txids"];
-	for (let index = 0; index < txids.length; index++) {
-		try {
-			const transaction = (await db.TRANSACTIONS.get(
-				txids[index]
-			)) as Transaction;
 
-			if (isCoinbase(transaction)) {
-				const coinbaseResponse = validateCoinbase(transaction, index);
-				if (!coinbaseResponse.valid) return coinbaseResponse;
-				coinbaseTXID = txids[index];
-				coinbaseOutputValue = coinbaseResponse["data"]["value"];
-			} else {
-				console.log("TRANSACTION ", transaction);
-				for (let input of transaction["inputs"]) {
-					if (input.outpoint == coinbaseTXID) {
-						return {
-							valid: false,
-							msg: "Coinbase transaction cannot be spent in same block",
-						};
-					}
-				}
-				const transactionResponse = await validateTransaction(transaction);
-				if (!transactionResponse.valid) return transactionResponse;
-				sumInputValues += transactionResponse["data"]["inputValues"];
-				sumOutputValues += transactionResponse["data"]["outputValues"];
-			}
-		} catch (err) {
-			console.log(err);
+		const parentBlockValidationResponse = await parentBlockCallback(
+			block["previd"]
+		);
+		if (parentBlockValidationResponse === "Parent found") {
+			return validateBlock(block);
+		} else {
+			return {
+				valid: false,
+				msg: "Parent block does not exist",
+			};
 		}
+	} else {
+		const parent = existenceResponse.obj as Block;
+
+		// timestamp of created field is later than that of its parent
+		if (block["created"] <= parent.created) {
+			return {
+				valid: false,
+				msg: "timestamp of created field must be later than that of its parent",
+			};
+		}
+		// validate each transaction in the block
+		const txids: [string] = block["txids"];
+		for (let index = 0; index < txids.length; index++) {
+			try {
+				const transaction = (await db.TRANSACTIONS.get(
+					txids[index]
+				)) as Transaction;
+
+				if (isCoinbase(transaction)) {
+					const coinbaseResponse = validateCoinbase(transaction, index);
+					if (!coinbaseResponse.valid) return coinbaseResponse;
+					coinbaseTXID = txids[index];
+					coinbaseOutputValue = coinbaseResponse["data"]["value"];
+				} else {
+					console.log("TRANSACTION ", transaction);
+					for (let input of transaction["inputs"]) {
+						if (input.outpoint == coinbaseTXID) {
+							return {
+								valid: false,
+								msg: "Coinbase transaction cannot be spent in same block",
+							};
+						}
+					}
+					const transactionResponse = await validateTransaction(transaction);
+					if (!transactionResponse.valid) return transactionResponse;
+					sumInputValues += transactionResponse["data"]["inputValues"];
+					sumOutputValues += transactionResponse["data"]["outputValues"];
+				}
+			} catch (err) {
+				console.log(err);
+			}
+		}
+		if (
+			coinbaseOutputValue >
+			BLOCK_REWARD + (sumInputValues - sumOutputValues)
+		) {
+			return {
+				valid: false,
+				msg: "coinbase transaction does not satisfy law of conservation",
+			};
+		}
+		return { valid: true };
 	}
-	if (coinbaseOutputValue > BLOCK_REWARD + (sumInputValues - sumOutputValues)) {
-		return {
-			valid: false,
-			msg: "coinbase transaction does not satisfy law of conservation",
-		};
-	}
-	return {valid: true};	
 }
 
-export async function handleIncomingValidatedBlock(block: Block): Promise<VerificationResponse> {
-	var utxoToBeUpdated = (await db.BLOCKUTXOS.get(block["previd"])) as Array<Outpoint>;
-	const utxoBlockAdditionResponse = await applyBlockToUTXO(block, utxoToBeUpdated);
+export async function handleIncomingValidatedBlock(
+	block: Block
+): Promise<VerificationResponse> {
+	var utxoToBeUpdated = (await db.BLOCKUTXOS.get(
+		block["previd"]
+	)) as Array<Outpoint>;
+	const utxoBlockAdditionResponse = await applyBlockToUTXO(
+		block,
+		utxoToBeUpdated
+	);
 	if (utxoBlockAdditionResponse["valid"]) {
-		db.BLOCKUTXOS.put(createObjectID(block), utxoBlockAdditionResponse["data"] as Array<Outpoint>);
-		return {valid: true};
-	}else {
+		db.BLOCKUTXOS.put(
+			createObjectID(block),
+			utxoBlockAdditionResponse["data"] as Array<Outpoint>
+		);
+		return { valid: true };
+	} else {
 		return utxoBlockAdditionResponse;
-	}	
+	}
 }
 
 // TODO: create function that takes a TransactionRequest object and sends a getpeers message asking for the missing transactions.

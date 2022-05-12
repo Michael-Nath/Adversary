@@ -1,11 +1,11 @@
 import { createObjectID } from "./blockUtils";
 import { Block, Outpoint, Transaction } from "types";
 import { GENESIS_BLOCK } from "./constants";
+import { EventEmitter } from "stream";
 const Level = require("level");
 const sub = require("subleveldown");
 
 const DATABASE_PATH = "./database";
-
 export const DB = new Level(DATABASE_PATH, { valueEncoding: "json" });
 export const TRANSACTIONS = sub(DB, "transactions", { valueEncoding: "json" });
 export const PEERS = sub(DB, "peers", { valueEncoding: "json" });
@@ -38,10 +38,13 @@ export function updateDBWithObject(obj: Block | Transaction) {
 		} else {
 			await TRANSACTIONS.put(hashOfObject, obj);
 		}
+		globalThis.emitter.emit(hashOfObject);
 	})();
 }
 
-export async function updateDBWithObjectWithPromise(obj: Block | Transaction): Promise<void> {
+export async function updateDBWithObjectWithPromise(
+	obj: Block | Transaction
+): Promise<void> {
 	const hashOfObject = createObjectID(obj);
 	if (obj.type == "block") {
 		await BLOCKS.put(hashOfObject, obj);
