@@ -58,8 +58,6 @@ export function startServer() {
 					// String before first new line will complete the buffer into a complete message
 					if (i == 0) {
 						const completedMessage = Utils.sanitizeString(socket, msg, true);
-						
-						
 						Utils.routeMessage(completedMessage, socket, socket.address()["address"]);
 					}else if (i == msgs.length - 1) {
 						// String after the last new line will go into the buffer

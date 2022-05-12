@@ -28,8 +28,11 @@ declare global {
 	var pendingBlocks: Map<string, Types.PendingBlock>;
 }
 
-export function connectToNode(client: Net.Socket) {
+export function connectToNode(client: Net.Socket, msg?: string) {
 	client.write(Constants.HELLO_MESSAGE + "\n");
+	if (msg) {
+		client.write(msg + "\n");
+	}
 	getPeers(client);
 }
 
@@ -131,6 +134,7 @@ export function sendObject(socket: Net.Socket, response: Object) {
 
 async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 	const blockValidateResponse = await validateBlock(block);
+	const potentialNewTip = { block, height: blockValidateResponse.data.height } as Types.ChainTip;
 	if (!blockValidateResponse.valid) {
 		Utils.sendErrorMessage(socket, blockValidateResponse.msg);
 		return;
@@ -143,6 +147,14 @@ async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 	}
 	gossipObject(block);
 	db.updateDBWithObject(block);
+
+	if(globalThis.chainTip) {
+		if(potentialNewTip.height > globalThis.chainTip.height) {
+			globalThis.chainTip = potentialNewTip;
+		}
+	}else {
+		globalThis.chainTip = potentialNewTip;
+	}
 } 
 
 export async function addObject(socket: Net.Socket, response: Object) {
@@ -226,6 +238,21 @@ export async function addObject(socket: Net.Socket, response: Object) {
 			}
 		}
 	})();
+}
+
+export function sendChainTip(socket: Net.Socket) {
+	if(globalThis.currentTip) {
+		const chainTipMessage: Types.ChainTipMessage = {
+			type: "chaintip",
+			blockid: createObjectID(globalThis.currentTip.block),
+		};
+		socket.write(canonicalize(chainTipMessage) + "\n");
+	}
+}
+
+export function addNewChainTip(socket: Net.Socket, response: Object) {
+	response["data"]["objectid"] = response["data"]["blockid"];
+	retrieveObject(socket, response);
 }
 
 export function obtainBootstrappingPeers(): Set<string> | void {

@@ -11,7 +11,9 @@ db.updateDBWithPeers(globalThis.connections);
 globalThis.peerStatuses = {};
 globalThis.sockets = new Set<Net.Socket>();
 globalThis.pendingBlocks = new Map<string, PendingBlock>();
+globalThis.chainTip = null;
 // Utils.resetStore()
 // Utils.initializeStore()
 startServer();
-// startClient();
+const getChainTipMessage = JSON.stringify({ type: "getchaintip" });
+startClient(getChainTipMessage);

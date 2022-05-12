@@ -14,17 +14,16 @@ import * as Discovery from "./discovery";
 import { nanoid } from 'nanoid'
 
 
-export function startClient() {
+export function startClient(msg?: string) {
 	globalThis.connections.forEach((peer) => {
 		// Create a new TCP client.
 		const client = new Net.Socket();
 		client.id = nanoid()
 		globalThis.peerStatuses[client.id] = { buffer: "" };
 		
-		
 		// Send a connection request to the server.
 		client.connect({ port: CONSTANTS.PORT, host: peer }, () =>
-			Discovery.connectToNode(client)
+			Discovery.connectToNode(client, msg)
 		);
 		// // The client can also receive data from the server by reading from its socket.
 		// TODO: Should be updated to match server.ts implentation of data event
@@ -38,25 +37,20 @@ export function startClient() {
 					const msg = msgs[i]
 					if (i == 0) {
 						const completedMessage = Utils.sanitizeString(client, msg, true)
-						
-						
 						Utils.routeMessage(completedMessage, client, client.address()["address"]);
 					}else if (i == msgs.length - 1) {
 						msg != "" && Utils.sanitizeString(client, msg, false)
 					}else {
-						
-						
 						Utils.routeMessage(msg, client, client.address()["address"]);
 					}
 				}
 			}
 		});
 		client.on("end", function () {
-			
-			globalThis.connections.delete(client.id)
+			globalThis.connections.delete(client.id);
 		});
 		client.on("error", function (err) {
-			
+			console.error(err);
 		});
 	});
 }
