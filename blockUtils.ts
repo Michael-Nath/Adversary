@@ -5,6 +5,7 @@ import {
 	TransactionRequest,
 	Outpoint,
 	ValidationMessage,
+	HashObjectMessage,
 } from "./types";
 import * as sha256 from "fast-sha256";
 import {
@@ -14,8 +15,8 @@ import {
 	validateTransaction,
 } from "./transactionUtils";
 import * as db from "./db";
-import { getPeers } from "discovery";
 import { applyBlockToUTXO } from "./utxoUtils";
+import { utils } from "@noble/ed25519";
 const T_VALUE =
 	"00000002af000000000000000000000000000000000000000000000000000000";
 const BLOCK_REWARD = 50000000000000;
@@ -124,6 +125,20 @@ function parentBlockCallback(previd: string): Promise<string> {
 	});
 }
 
+export function askForParent(parentid: string) {
+	const getObjectMessage: HashObjectMessage = {
+		type: "getobject",
+		objectid: parentid,
+	};
+	(async () => {
+		for (let peerToInformConnection of globalThis.sockets) {
+			peerToInformConnection.write(
+				canonicalize(getObjectMessage) + "\n"
+			);
+		}
+	})();
+}
+
 export async function validateBlock(
 	block: Object
 ): Promise<VerificationResponse> {
@@ -132,11 +147,12 @@ export async function validateBlock(
 	let sumInputValues = 0;
 	let sumOutputValues = 0;
 	// check if parent block exists
-	const existenceResponse = await db.doesHashExist(block["previd"]);
+	const previd = block["previd"];
+	const existenceResponse = await db.doesHashExist(previd);
 	if (!existenceResponse.exists) {
-
+		askForParent(previd);
 		const parentBlockValidationResponse = await parentBlockCallback(
-			block["previd"]
+			previd
 		);
 		if (parentBlockValidationResponse === "Parent found") {
 			return validateBlock(block);
@@ -148,7 +164,13 @@ export async function validateBlock(
 		}
 	} else {
 		const parent = existenceResponse.obj as Block;
-
+		const parentHeight = await db.HEIGHTS.get(previd);
+		const newHeight = parseInt(parentHeight) + 1;
+		// console.log("PARENT HEIGHT IS:");
+		// console.log(previd);
+		// console.log(parentHeight);
+		// console.log(typeof parentHeight);
+		// db.printDB();
 		// timestamp of created field is later than that of its parent
 		if (block["created"] <= parent.created) {
 			return {
@@ -165,14 +187,14 @@ export async function validateBlock(
 				)) as Transaction;
 
 				if (isCoinbase(transaction)) {
-					const coinbaseResponse = validateCoinbase(transaction, index);
+					const coinbaseResponse = validateCoinbase(transaction, index, newHeight);
 					if (!coinbaseResponse.valid) return coinbaseResponse;
 					coinbaseTXID = txids[index];
 					coinbaseOutputValue = coinbaseResponse["data"]["value"];
 				} else {
 					console.log("TRANSACTION ", transaction);
 					for (let input of transaction["inputs"]) {
-						if (input.outpoint == coinbaseTXID) {
+						if (input.outpoint.txid == coinbaseTXID) {
 							return {
 								valid: false,
 								msg: "Coinbase transaction cannot be spent in same block",
@@ -197,6 +219,7 @@ export async function validateBlock(
 				msg: "coinbase transaction does not satisfy law of conservation",
 			};
 		}
+		await db.HEIGHTS.put(createObjectID(block as Block), newHeight);
 		return { valid: true };
 	}
 }

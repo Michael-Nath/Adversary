@@ -231,14 +231,6 @@ export async function addObject(socket: Net.Socket, response: Object) {
 	})();
 }
 
-function askForParent(socket, parentid) {
-	const getObjectMessage: Types.HashObjectMessage = {
-		type: "getobject",
-		objectid: parentid,
-	};
-	socket.write(canonicalize(getObjectMessage) + "\n");
-}
-
 // async function downloadAllParents(socket, blockid: Types.Block) {
 // 	var currentid = createObjectID(blockid);
 // 	var allDownloaded = false;
