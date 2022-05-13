@@ -8,7 +8,7 @@
 // TODO:
 // Make data property of ValidationMessage work with JSON
 
-import { Socket } from "net";
+import { BlockList, Socket } from "net";
 
 export interface ValidationMessage {
 	valid: boolean;
@@ -89,6 +89,16 @@ export interface VerificationResponse {
 export interface TransactionRequest {
 	missing: boolean;
 	txids: Set<string>;
+}
+
+export interface ChainTip {
+	block: Block;
+	height: number;
+}
+
+export interface ChainTipMessage {
+	type: "chaintip";
+	blockid: string; 
 }
 
 export type HashToObjectMap = Map<string, ApplicationObject>;

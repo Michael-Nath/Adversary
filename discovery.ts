@@ -30,8 +30,12 @@ declare global {
 	var pendingBlocks: Map<string, Types.PendingBlock>;
 }
 
-export function connectToNode(client: Net.Socket) {
+export function connectToNode(client: Net.Socket, msg?: string) {
 	client.write(Constants.HELLO_MESSAGE + "\n");
+	if (msg) {
+		console.log("CONNECTING AND SENDING CHAIN TIP MESSASGE");
+		client.write(msg + "\n");
+	}
 	getPeers(client);
 }
 
@@ -137,6 +141,7 @@ async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 		Utils.sendErrorMessage(socket, blockValidateResponse.msg);
 		return;
 	}
+	const potentialNewTip = { block, height: blockValidateResponse.data.height } as Types.ChainTip;
 	console.log("ADDING OBJECT TO DB");
 	const processBlockUTXO = await handleIncomingValidatedBlock(block);
 	if (!processBlockUTXO.valid) {
@@ -145,6 +150,14 @@ async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 	}
 	gossipObject(block);
 	db.updateDBWithObject(block);
+
+	if(globalThis.chainTip) {
+		if(potentialNewTip.height > globalThis.chainTip.height) {
+			globalThis.chainTip = potentialNewTip;
+		}
+	}else {
+		globalThis.chainTip = potentialNewTip;
+	}
 } 
 
 export async function addObject(socket: Net.Socket, response: Object) {
@@ -231,28 +244,23 @@ export async function addObject(socket: Net.Socket, response: Object) {
 	})();
 }
 
-// async function downloadAllParents(socket, blockid: Types.Block) {
-// 	var currentid = createObjectID(blockid);
-// 	var allDownloaded = false;
-// 	while (true) {
-// 		var exists = false
-// 		try {
-// 			await db.doesHashExist(block.previd)
-// 			exists = true;
-// 		} catch {}
-// 		if (!exists) {
-// 			askForParent(socket, block.previd)
-// 			setTimeout(async () => {
-// 				try {
-// 					await db.doesHashExist(block.previd)
-// 					allDownloaded = true;
-// 				} catch {}
-// 			}, 5000)
-// 		}
-// 		if (allDownloaded) break;
-// 		else currentid
-// 	}
-// }
+export function sendChainTip(socket: Net.Socket) {
+	console.log("SENDING TIP");
+	if(globalThis.chainTip) {
+		const chainTipMessage: Types.ChainTipMessage = {
+			type: "chaintip",
+			blockid: createObjectID(globalThis.chainTip.block),
+		};
+		socket.write(canonicalize(chainTipMessage) + "\n");
+	}
+}
+
+export function addNewChainTip(socket: Net.Socket, response: Object) {
+	response["data"]["objectid"] = response["data"]["blockid"];
+	console.log("CONSIDERING NEW CHAIN TIP");
+	console.log(response);
+	retrieveObject(socket, response);
+}
 
 export function obtainBootstrappingPeers(): Set<string> | void {
 	try {

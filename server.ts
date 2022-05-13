@@ -47,6 +47,9 @@ export function startServer() {
 
 		socket.on("data", (chunk) => {
 			const fullString = chunk.toString();
+			console.log("INCOMING TO SERVER");
+			console.log(fullString);
+			console.log("-------------------");
 			const msgs = fullString.split("\n");
 			
 			// If no new line character, then add full string to the buffer
@@ -58,8 +61,6 @@ export function startServer() {
 					// String before first new line will complete the buffer into a complete message
 					if (i == 0) {
 						const completedMessage = Utils.sanitizeString(socket, msg, true);
-						
-						
 						Utils.routeMessage(completedMessage, socket, socket.address()["address"]);
 					}else if (i == msgs.length - 1) {
 						// String after the last new line will go into the buffer

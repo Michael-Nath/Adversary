@@ -172,7 +172,7 @@ export async function validateBlock(
 		// console.log(typeof parentHeight);
 		// db.printDB();
 		// timestamp of created field is later than that of its parent
-		if (block["created"] <= parent.created) {
+		if (block["created"] < parent.created) {
 			return {
 				valid: false,
 				msg: "timestamp of created field must be later than that of its parent",
@@ -220,7 +220,7 @@ export async function validateBlock(
 			};
 		}
 		await db.HEIGHTS.put(createObjectID(block as Block), newHeight);
-		return { valid: true };
+		return { valid: true, data: { height: newHeight } };
 	}
 }
 

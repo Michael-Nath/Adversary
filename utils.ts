@@ -9,6 +9,7 @@ import * as Types from "./types";
 import type { Socket } from "net";
 import * as Discovery from "./discovery";
 import * as Constants from "./constants"
+import { KeyObject } from "crypto";
 const canonicalize = require("canonicalize");
 
 export function isValidFirstMessage(response: {}): boolean {
@@ -66,6 +67,8 @@ export function routeMessage(msg: string, socket: Socket, peer: string) {
 	const response = validateMessage(socket, msg);
 
 	if (response["error"]) {
+		console.log("INVALID MESSAGE RECEIVED - SENDING THIS OUT");
+		console.log(msg);
 		sendErrorMessage(socket, response["error"]["error"]);
 		return;
 	}
@@ -84,6 +87,12 @@ export function routeMessage(msg: string, socket: Socket, peer: string) {
 			break;
 		case "getobject":
 			Discovery.sendObject(socket, response);
+			break;
+		case "getchaintip":
+			Discovery.sendChainTip(socket);
+			break;
+		case "chaintip":
+			Discovery.addNewChainTip(socket, response);
 			break;
 		case "object":
 			(async () => {

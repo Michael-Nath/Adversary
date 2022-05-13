@@ -22,6 +22,8 @@ export const ALLOWABLE_TYPES: Set<string> = new Set([
 	"ihaveobject",
 	"getobject",
 	"object",
+	"getchaintip",
+	"chaintip"
 ]);
 
 export var BOOTSTRAPPING_PEERS: Set<string> = new Set([
