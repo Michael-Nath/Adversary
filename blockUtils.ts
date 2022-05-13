@@ -5,6 +5,7 @@ import {
 	TransactionRequest,
 	Outpoint,
 	ValidationMessage,
+	HashObjectMessage,
 } from "./types";
 import * as sha256 from "fast-sha256";
 import {
@@ -14,8 +15,8 @@ import {
 	validateTransaction,
 } from "./transactionUtils";
 import * as db from "./db";
-import { getPeers } from "discovery";
 import { applyBlockToUTXO } from "./utxoUtils";
+import { utils } from "@noble/ed25519";
 const T_VALUE =
 	"00000002af000000000000000000000000000000000000000000000000000000";
 const BLOCK_REWARD = 50000000000000;
@@ -112,73 +113,136 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 	return { valid: true };
 }
 
+function parentBlockCallback(previd: string): Promise<string> {
+	return new Promise((resolve) => {
+		globalThis.emitter.on(previd, () => {
+			resolve("Parent found");
+		});
+		setTimeout(() => {
+			globalThis.emitter.removeAllListeners(previd);
+			resolve("Parent not found");
+		}, 5000);
+	});
+}
+
+export function askForParent(parentid: string) {
+	const getObjectMessage: HashObjectMessage = {
+		type: "getobject",
+		objectid: parentid,
+	};
+	(async () => {
+		for (let peerToInformConnection of globalThis.sockets) {
+			peerToInformConnection.write(
+				canonicalize(getObjectMessage) + "\n"
+			);
+		}
+	})();
+}
+
 export async function validateBlock(
 	block: Object
 ): Promise<VerificationResponse> {
-	const response = validateBlockFormat(block);
-	if (!response.valid) return response;
 	let coinbaseTXID;
 	let coinbaseOutputValue = 0;
 	let sumInputValues = 0;
 	let sumOutputValues = 0;
 	// check if parent block exists
-	const existenceResponse = await db.doesHashExist(block["previd"]);
+	const previd = block["previd"];
+	const existenceResponse = await db.doesHashExist(previd);
 	if (!existenceResponse.exists) {
-		return {
-			valid: false,
-			msg: "Parent block does not exist",
-		};
-	}
-	// validate each transaction in the block
-	const txids: [string] = block["txids"];
-	for (let index = 0; index < txids.length; index++) {
-		try {
-			const transaction = (await db.TRANSACTIONS.get(
-				txids[index]
-			)) as Transaction;
-
-			if (isCoinbase(transaction)) {
-				const coinbaseResponse = validateCoinbase(transaction, index);
-				if (!coinbaseResponse.valid) return coinbaseResponse;
-				coinbaseTXID = txids[index];
-				coinbaseOutputValue = coinbaseResponse["data"]["value"];
-			} else {
-				console.log("TRANSACTION ", transaction);
-				for (let input of transaction["inputs"]) {
-					if (input.outpoint == coinbaseTXID) {
-						return {
-							valid: false,
-							msg: "Coinbase transaction cannot be spent in same block",
-						};
-					}
-				}
-				const transactionResponse = await validateTransaction(transaction);
-				if (!transactionResponse.valid) return transactionResponse;
-				sumInputValues += transactionResponse["data"]["inputValues"];
-				sumOutputValues += transactionResponse["data"]["outputValues"];
-			}
-		} catch (err) {
-			console.log(err);
+		askForParent(previd);
+		const parentBlockValidationResponse = await parentBlockCallback(
+			previd
+		);
+		if (parentBlockValidationResponse === "Parent found") {
+			return validateBlock(block);
+		} else {
+			return {
+				valid: false,
+				msg: "Parent block does not exist",
+			};
 		}
+	} else {
+		const parent = existenceResponse.obj as Block;
+		const parentHeight = await db.HEIGHTS.get(previd);
+		const newHeight = parseInt(parentHeight) + 1;
+		// console.log("PARENT HEIGHT IS:");
+		// console.log(previd);
+		// console.log(parentHeight);
+		// console.log(typeof parentHeight);
+		// db.printDB();
+		// timestamp of created field is later than that of its parent
+		if (block["created"] <= parent.created) {
+			return {
+				valid: false,
+				msg: "timestamp of created field must be later than that of its parent",
+			};
+		}
+		// validate each transaction in the block
+		const txids: [string] = block["txids"];
+		for (let index = 0; index < txids.length; index++) {
+			try {
+				const transaction = (await db.TRANSACTIONS.get(
+					txids[index]
+				)) as Transaction;
+
+				if (isCoinbase(transaction)) {
+					const coinbaseResponse = validateCoinbase(transaction, index, newHeight);
+					if (!coinbaseResponse.valid) return coinbaseResponse;
+					coinbaseTXID = txids[index];
+					coinbaseOutputValue = coinbaseResponse["data"]["value"];
+				} else {
+					console.log("TRANSACTION ", transaction);
+					for (let input of transaction["inputs"]) {
+						if (input.outpoint.txid == coinbaseTXID) {
+							return {
+								valid: false,
+								msg: "Coinbase transaction cannot be spent in same block",
+							};
+						}
+					}
+					const transactionResponse = await validateTransaction(transaction);
+					if (!transactionResponse.valid) return transactionResponse;
+					sumInputValues += transactionResponse["data"]["inputValues"];
+					sumOutputValues += transactionResponse["data"]["outputValues"];
+				}
+			} catch (err) {
+				console.log(err);
+			}
+		}
+		if (
+			coinbaseOutputValue >
+			BLOCK_REWARD + (sumInputValues - sumOutputValues)
+		) {
+			return {
+				valid: false,
+				msg: "coinbase transaction does not satisfy law of conservation",
+			};
+		}
+		await db.HEIGHTS.put(createObjectID(block as Block), newHeight);
+		return { valid: true };
 	}
-	if (coinbaseOutputValue > BLOCK_REWARD + (sumInputValues - sumOutputValues)) {
-		return {
-			valid: false,
-			msg: "coinbase transaction does not satisfy law of conservation",
-		};
-	}
-	return {valid: true};	
 }
 
-export async function handleIncomingValidatedBlock(block: Block): Promise<VerificationResponse> {
-	var utxoToBeUpdated = (await db.BLOCKUTXOS.get(block["previd"])) as Array<Outpoint>;
-	const utxoBlockAdditionResponse = await applyBlockToUTXO(block, utxoToBeUpdated);
+export async function handleIncomingValidatedBlock(
+	block: Block
+): Promise<VerificationResponse> {
+	var utxoToBeUpdated = (await db.BLOCKUTXOS.get(
+		block["previd"]
+	)) as Array<Outpoint>;
+	const utxoBlockAdditionResponse = await applyBlockToUTXO(
+		block,
+		utxoToBeUpdated
+	);
 	if (utxoBlockAdditionResponse["valid"]) {
-		db.BLOCKUTXOS.put(createObjectID(block), utxoBlockAdditionResponse["data"] as Array<Outpoint>);
-		return {valid: true};
-	}else {
+		db.BLOCKUTXOS.put(
+			createObjectID(block),
+			utxoBlockAdditionResponse["data"] as Array<Outpoint>
+		);
+		return { valid: true };
+	} else {
 		return utxoBlockAdditionResponse;
-	}	
+	}
 }
 
 // TODO: create function that takes a TransactionRequest object and sends a getpeers message asking for the missing transactions.

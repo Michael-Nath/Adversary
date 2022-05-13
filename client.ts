@@ -52,11 +52,10 @@ export function startClient() {
 			}
 		});
 		client.on("end", function () {
-			
 			globalThis.connections.delete(client.id)
 		});
 		client.on("error", function (err) {
-			
+			console.error(err);
 		});
 	});
 }

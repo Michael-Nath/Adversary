@@ -21,9 +21,11 @@ import {
 } from "./blockUtils";
 import { validateTransaction } from "./transactionUtils";
 import { nanoid } from "nanoid";
+import { EventEmitter } from "stream";
 const canonicalize = require("canonicalize");
 
 declare global {
+	var emitter: EventEmitter
 	var peerStatuses: {};
 	var pendingBlocks: Map<string, Types.PendingBlock>;
 }
@@ -158,7 +160,7 @@ export async function addObject(socket: Net.Socket, response: Object) {
 
 		const isCoinbase: boolean = obj["height"] != undefined;
 		const isBlock: boolean = obj["type"] == "block";
-	
+		// await downloadAllParents(socket, obj)
 		if (isCoinbase) {
 			if (!hashResponse["exists"]) {
 				gossipObject(obj);
@@ -185,6 +187,7 @@ export async function addObject(socket: Net.Socket, response: Object) {
 			}
 			const correspondingTransactionsResponse =
 				await correspondingTransactionsExist(obj["txids"]);
+
 			if (correspondingTransactionsResponse["txids"].size > 0) {
 				globalThis.pendingBlocks.set(objectHash, {block: (obj as Types.Block), socket: socket, txids: correspondingTransactionsResponse["txids"]});
 				for (let txid of correspondingTransactionsResponse["txids"]) {
@@ -219,7 +222,7 @@ export async function addObject(socket: Net.Socket, response: Object) {
 					globalThis.pendingBlocks.get(blockid).txids.delete(objectHash);
 					console.log("PENDING BLOCKS AFTER");
 					console.log(globalThis.pendingBlocks);
-					if (globalThis.pendingBlocks.get(blockid).txids.size == 0) {
+					if (globalThis.pendingBlocks.get(blockid).txids.size == 0) {;
 						validateUTXOAndGossipBlock(globalThis.pendingBlocks.get(blockid).socket, globalThis.pendingBlocks.get(blockid).block).then(() => {globalThis.pendingBlocks.delete(blockid);});
 					}
 				}
@@ -227,6 +230,29 @@ export async function addObject(socket: Net.Socket, response: Object) {
 		}
 	})();
 }
+
+// async function downloadAllParents(socket, blockid: Types.Block) {
+// 	var currentid = createObjectID(blockid);
+// 	var allDownloaded = false;
+// 	while (true) {
+// 		var exists = false
+// 		try {
+// 			await db.doesHashExist(block.previd)
+// 			exists = true;
+// 		} catch {}
+// 		if (!exists) {
+// 			askForParent(socket, block.previd)
+// 			setTimeout(async () => {
+// 				try {
+// 					await db.doesHashExist(block.previd)
+// 					allDownloaded = true;
+// 				} catch {}
+// 			}, 5000)
+// 		}
+// 		if (allDownloaded) break;
+// 		else currentid
+// 	}
+// }
 
 export function obtainBootstrappingPeers(): Set<string> | void {
 	try {

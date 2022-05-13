@@ -29,7 +29,8 @@ export function isCoinbase(transaction: Transaction): boolean {
 }
 export function validateCoinbase(
 	coinbase: Transaction,
-	index: number
+	index: number,
+	correctHeight: number
 ): VerificationResponse {
 	if (index != 0)
 		return {
@@ -50,6 +51,12 @@ export function validateCoinbase(
 		return {
 			valid: false,
 			msg: "Coinbase transaction must have valid non-negative integer height",
+		};
+	}
+	if (coinbase["height"] != correctHeight) {
+		return {
+			valid: false,
+			msg: "Coinbase transaction height must match block height from genesis",
 		};
 	}
 	return { valid: true, data: { value: coinbase["outputs"][0]["value"] } };
