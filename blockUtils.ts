@@ -166,19 +166,14 @@ export async function validateBlock(
 		const parent = existenceResponse.obj as Block;
 		const parentHeight = await db.HEIGHTS.get(previd);
 		const newHeight = parseInt(parentHeight) + 1;
-		// console.log("PARENT HEIGHT IS:");
-		// console.log(previd);
-		// console.log(parentHeight);
-		// console.log(typeof parentHeight);
-		// db.printDB();
-		// timestamp of created field is later than that of its parent
+
 		if (block["created"] <= parent.created) {
 			return {
 				valid: false,
 				msg: "timestamp of created field must be later than that of its parent",
 			};
 		}
-		if (block["created"] > Date.now()) {
+		if (block["created"] > (Date.now() / 1000)) {
 			return {
 				valid: false,
 				msg: "timestamp of block must be before the current time",
