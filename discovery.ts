@@ -22,12 +22,16 @@ import {
 import { validateTransaction } from "./transactionUtils";
 import { nanoid } from "nanoid";
 import { EventEmitter } from "stream";
+import { applyTransactionToUTXO } from "./utxoUtils";
 const canonicalize = require("canonicalize");
 
 declare global {
 	var emitter: EventEmitter
 	var peerStatuses: {};
 	var pendingBlocks: Map<string, Types.PendingBlock>;
+	var chainTip: Types.ChainTip;
+	var mempool: Array<string>;
+	var mempoolState: Array<Types.Outpoint>;
 }
 
 export function connectToNode(client: Net.Socket, msg?: string) {
@@ -135,6 +139,11 @@ export function sendObject(socket: Net.Socket, response: Object) {
 	})();
 }
 
+async function filter(arr, callback) {
+	const fail = Symbol()
+	return (await Promise.all(arr.map(async item => (await callback(item)) ? item : fail))).filter(i=>i!==fail)
+  }
+
 async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 	const blockValidateResponse = await validateBlock(block);
 	if (!blockValidateResponse.valid) {
@@ -153,6 +162,19 @@ async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 
 	if(globalThis.chainTip) {
 		if(potentialNewTip.height > globalThis.chainTip.height) {
+			// TEMPORARY CHECK IF BLOCK IS ADDING TO LONGEST CHAIN 
+			if (potentialNewTip.block.previd === createObjectID(globalThis.chainTip.block)) {
+				globalThis.mempoolState = await db.BLOCKUTXOS.get(createObjectID(globalThis.chainTip.block));
+
+				globalThis.mempool = await filter(globalThis.mempool, async txid => {
+					if (potentialNewTip.block.txids.indexOf(txid) >= 0) {
+						return false;
+					}
+					const tx = await db.TRANSACTIONS.get(txid) as Types.Transaction;
+					const mempoolStateUpdateResponse = applyTransactionToUTXO(tx, globalThis.mempoolState);
+					return mempoolStateUpdateResponse.valid;
+				});
+			}
 			globalThis.chainTip = potentialNewTip;
 		}
 	}else {

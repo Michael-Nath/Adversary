@@ -236,7 +236,7 @@ export async function handleIncomingValidatedBlock(
 		utxoToBeUpdated
 	);
 	if (utxoBlockAdditionResponse["valid"]) {
-		db.BLOCKUTXOS.put(
+		await db.BLOCKUTXOS.put(
 			createObjectID(block),
 			utxoBlockAdditionResponse["data"] as Array<Outpoint>
 		);

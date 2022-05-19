@@ -4,7 +4,7 @@ import * as Utils from "./utils";
 import * as db from "./db";
 import * as Discovery from "./discovery";
 import * as Net from "net";
-import { Block, PendingBlock, ChainTip } from "./types";
+import { Block, PendingBlock, ChainTip, Outpoint } from "./types";
 import { EventEmitter } from "stream";
 import { GENESIS_BLOCK } from "./constants"
 const canonicalize = require("canonicalize");
@@ -16,8 +16,10 @@ globalThis.sockets = new Set<Net.Socket>();
 globalThis.pendingBlocks = new Map<string, PendingBlock>();
 globalThis.emitter = new EventEmitter();
 globalThis.chainTip = { block: GENESIS_BLOCK, height: 0};
+globalThis.mempool = new Array<string>();
+globalThis.mempoolState = new Array<Outpoint>();
 // Utils.resetStore()
 // Utils.initializeStore()
 startServer();
-const getChainTipMessage = canonicalize({ type: "getchaintip" });
+const getChainTipMessage = canonicalize({ type: "getchaintip" }) + "\n" + canonicalize({ type: "getmempool" });
 startClient(getChainTipMessage);
