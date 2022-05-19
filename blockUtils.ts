@@ -79,7 +79,8 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 	if (
 		blockifiedBlock["miner"] != undefined &&
 		(typeof blockifiedBlock["miner"] != "string" ||
-			blockifiedBlock["miner"].length > 128)
+			blockifiedBlock["miner"].length > 128 ||
+			!/^[\x00-\x7F]*$/.test(blockifiedBlock["miner"]))
 	) {
 		return {
 			valid: false,
@@ -89,7 +90,8 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 	if (
 		blockifiedBlock["note"] != undefined &&
 		(typeof blockifiedBlock["note"] != "string" ||
-			blockifiedBlock["note"].length > 128)
+			blockifiedBlock["note"].length > 128 ||
+			!/^[\x00-\x7F]*$/.test(blockifiedBlock["note"]))
 	) {
 		return {
 			valid: false,
@@ -132,9 +134,7 @@ export function askForParent(parentid: string) {
 	};
 	(async () => {
 		for (let peerToInformConnection of globalThis.sockets) {
-			peerToInformConnection.write(
-				canonicalize(getObjectMessage) + "\n"
-			);
+			peerToInformConnection.write(canonicalize(getObjectMessage) + "\n");
 		}
 	})();
 }
@@ -151,9 +151,7 @@ export async function validateBlock(
 	const existenceResponse = await db.doesHashExist(previd);
 	if (!existenceResponse.exists) {
 		askForParent(previd);
-		const parentBlockValidationResponse = await parentBlockCallback(
-			previd
-		);
+		const parentBlockValidationResponse = await parentBlockCallback(previd);
 		if (parentBlockValidationResponse === "Parent found") {
 			return validateBlock(block);
 		} else {
@@ -173,7 +171,7 @@ export async function validateBlock(
 				msg: "timestamp of created field must be later than that of its parent",
 			};
 		}
-		if (block["created"] > (Date.now() / 1000)) {
+		if (block["created"] > Date.now() / 1000) {
 			return {
 				valid: false,
 				msg: "timestamp of block must be before the current time",
@@ -186,9 +184,12 @@ export async function validateBlock(
 				const transaction = (await db.TRANSACTIONS.get(
 					txids[index]
 				)) as Transaction;
-
 				if (isCoinbase(transaction)) {
-					const coinbaseResponse = validateCoinbase(transaction, index, newHeight);
+					const coinbaseResponse = validateCoinbase(
+						transaction,
+						index,
+						newHeight
+					);
 					if (!coinbaseResponse.valid) return coinbaseResponse;
 					coinbaseTXID = txids[index];
 					coinbaseOutputValue = coinbaseResponse["data"]["value"];
