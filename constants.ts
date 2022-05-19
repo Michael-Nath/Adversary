@@ -23,7 +23,9 @@ export const ALLOWABLE_TYPES: Set<string> = new Set([
 	"getobject",
 	"object",
 	"getchaintip",
-	"chaintip"
+	"chaintip",
+	"getmempool",
+	"mempool"
 ]);
 
 export var BOOTSTRAPPING_PEERS: Set<string> = new Set([

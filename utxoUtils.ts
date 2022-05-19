@@ -50,3 +50,26 @@ export async function applyBlockToUTXO(block: Block, utxo: Array<Outpoint>): Pro
     console.log(utxo);
     return {valid: true, data: utxo};
 }
+
+export async function filter(arr, callback) {
+	const fail = Symbol()
+	return (await Promise.all(arr.map(async item => (await callback(item)) ? item : fail))).filter(i=>i!==fail)
+}
+
+export async function filterInvalidMempoolTransactions() {
+	globalThis.mempool = await filter(globalThis.mempool, async txid => {
+		const tx = await db.TRANSACTIONS.get(txid) as Transaction;
+		const mempoolStateUpdateResponse = applyTransactionToUTXO(tx, globalThis.mempoolState);
+		return mempoolStateUpdateResponse.valid;
+	});
+}
+
+export async function removeBlockFromMempool(block: Block) {
+	globalThis.mempool = await filter(globalThis.mempool, async txid => {
+		return (block.txids.indexOf(txid) < 0);
+	});
+}
+
+export function addBlockToMempool(block: Block) {
+	globalThis.mempool = block.txids.concat(globalThis.mempool);
+}

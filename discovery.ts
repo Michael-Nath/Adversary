@@ -22,7 +22,7 @@ import {
 import { validateTransaction } from "./transactionUtils";
 import { nanoid } from "nanoid";
 import { EventEmitter } from "stream";
-import { applyTransactionToUTXO } from "./utxoUtils";
+import { addBlockToMempool, applyTransactionToUTXO, filterInvalidMempoolTransactions, removeBlockFromMempool } from "./utxoUtils";
 const canonicalize = require("canonicalize");
 
 declare global {
@@ -139,11 +139,6 @@ export function sendObject(socket: Net.Socket, response: Object) {
 	})();
 }
 
-async function filter(arr, callback) {
-	const fail = Symbol()
-	return (await Promise.all(arr.map(async item => (await callback(item)) ? item : fail))).filter(i=>i!==fail)
-  }
-
 async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 	const blockValidateResponse = await validateBlock(block);
 	if (!blockValidateResponse.valid) {
@@ -158,22 +153,36 @@ async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 		return;
 	}
 	gossipObject(block);
-	db.updateDBWithObject(block);
+	await db.updateDBWithObjectWithPromise(block);
 
 	if(globalThis.chainTip) {
 		if(potentialNewTip.height > globalThis.chainTip.height) {
-			// TEMPORARY CHECK IF BLOCK IS ADDING TO LONGEST CHAIN 
+			// RESET STATE TO UTXO OF NEW CHAINTIP
+			globalThis.mempoolState = await db.BLOCKUTXOS.get(createObjectID(potentialNewTip.block));
 			if (potentialNewTip.block.previd === createObjectID(globalThis.chainTip.block)) {
-				globalThis.mempoolState = await db.BLOCKUTXOS.get(createObjectID(globalThis.chainTip.block));
+				// BLOCK IS ADDING TO LONGEST CHAIN (NO REORG)
+				await removeBlockFromMempool(potentialNewTip.block);
+				await filterInvalidMempoolTransactions();
+			}else {
+				// PERFORMING REORG
+				let currentHash = createObjectID(globalThis.chainTip.block);
+				const GENESIS_HASH = createObjectID(Constants.GENESIS_BLOCK);
 
-				globalThis.mempool = await filter(globalThis.mempool, async txid => {
-					if (potentialNewTip.block.txids.indexOf(txid) >= 0) {
-						return false;
-					}
-					const tx = await db.TRANSACTIONS.get(txid) as Types.Transaction;
-					const mempoolStateUpdateResponse = applyTransactionToUTXO(tx, globalThis.mempoolState);
-					return mempoolStateUpdateResponse.valid;
-				});
+				// ADD BLOCKS BACK TO GENESIS FROM OLD CHAINTIP
+				while (currentHash !== GENESIS_HASH) {
+					const currentBlock = await db.BLOCKS.get(currentHash) as Types.Block;
+					addBlockToMempool(currentBlock);
+					currentHash = currentBlock.previd;
+				}
+
+				// REMOVE BLOCKS BACK TO GENESIS FROM NEW CHAINTIP
+				currentHash = createObjectID(potentialNewTip.block);
+				while (currentHash !== GENESIS_HASH) {
+					const currentBlock = await db.BLOCKS.get(currentHash) as Types.Block;
+					removeBlockFromMempool(currentBlock);
+					currentHash = currentBlock.previd;
+				}
+				filterInvalidMempoolTransactions();
 			}
 			globalThis.chainTip = potentialNewTip;
 		}
@@ -195,7 +204,7 @@ export async function addObject(socket: Net.Socket, response: Object) {
 
 		const isCoinbase: boolean = obj["height"] != undefined;
 		const isBlock: boolean = obj["type"] == "block";
-		// await downloadAllParents(socket, obj)
+
 		if (isCoinbase) {
 			if (!hashResponse["exists"]) {
 				gossipObject(obj);
@@ -208,6 +217,12 @@ export async function addObject(socket: Net.Socket, response: Object) {
 				(validationResponse["valid"] || isCoinbase);
 
 			if (!hashResponse["exists"] && isValidTransaction) {
+				console.log("RECEIVED VALID TRANSACTION");
+				const isValidWithMempool = applyTransactionToUTXO(obj as Types.Transaction, globalThis.mempoolState);
+				if (isValidWithMempool.valid) {
+					console.log("PUSHING TO MEMPOOL");
+					globalThis.mempool.push(objectHash);
+				}
 				gossipObject(obj);
 				await db.updateDBWithObjectWithPromise(obj);
 			} else if (obj["type"] == "transaction" && !isValidTransaction) {
@@ -282,6 +297,17 @@ export function addNewChainTip(socket: Net.Socket, response: Object) {
 	console.log("CONSIDERING NEW CHAIN TIP");
 	console.log(response);
 	retrieveObject(socket, response);
+}
+
+export function addMempool(socket: Net.Socket, response: Object) {
+	for(const txid of response["data"]["txids"]) {
+		response["data"]["objectid"] = txid;
+		retrieveObject(socket, response);
+	}
+}
+
+export function sendMempool(socket: Net.Socket) {
+	socket.write(canonicalize({ type: "mempool", "txids": globalThis.mempool }) + "\n");
 }
 
 export function obtainBootstrappingPeers(): Set<string> | void {

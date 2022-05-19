@@ -9,7 +9,6 @@ import * as Types from "./types";
 import type { Socket } from "net";
 import * as Discovery from "./discovery";
 import * as Constants from "./constants"
-import { KeyObject } from "crypto";
 const canonicalize = require("canonicalize");
 
 export function isValidFirstMessage(response: {}): boolean {
@@ -98,6 +97,12 @@ export function routeMessage(msg: string, socket: Socket, peer: string) {
 			(async () => {
 				Discovery.addObject(socket, response);
 			})();
+			break;
+		case "mempool":
+			Discovery.addMempool(socket, response);
+			break;
+		case "getmempool":
+			Discovery.sendMempool(socket);
 			break;
 		default:
 			console.error("Invalid message type");

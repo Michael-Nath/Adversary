@@ -173,7 +173,7 @@ export async function validateBlock(
 				msg: "timestamp of created field must be later than that of its parent",
 			};
 		}
-		if (block["created"] > (Date.now() / 1000)) {
+		if (block["created"] > (Date.now() / 1)) {
 			return {
 				valid: false,
 				msg: "timestamp of block must be before the current time",
