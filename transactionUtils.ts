@@ -168,19 +168,11 @@ export async function validateTransaction(
 	const outputs: [TransactionOutput] = transaction["outputs"];
 	let inputValues = 0;
 	let outputValues = 0;
-	let outpointSet: Set<string> = new Set();
+	let outpointSet: Map<Outpoint, Set<Number>> = new Map();
 	for (let i = 0; i < inputs.length; i++) {
 		const input = inputs[i];
 		const outpoint: Outpoint = input.outpoint;
 		const response = await outpointExists(outpoint);
-		if (outpointSet.has(outpoint.txid)) {
-			return {
-				valid: false,
-				msg: "Error: multiple inputs cannot spend from same outpoint",
-			};
-		} else {
-			outpointSet.add(outpoint.txid);
-		}
 		if (!response["exists"]) {
 			return { valid: false, msg: "Error: outpoint does not exist." };
 		}
@@ -192,6 +184,18 @@ export async function validateTransaction(
 				valid: false,
 				msg: "Error: index provided not does not corresponding to any output of outpoint's transaction body.",
 			};
+		}
+		if (outpointSet.get(outpoint) == undefined) {
+			outpointSet.set(outpoint, new Set());
+		}
+		let indicesUsed = outpointSet.get(outpoint);
+		if (indicesUsed.has(outpoint.index)) {
+			return {
+				valid: false,
+				msg: "Error: multiple inputs cannot spend from same outpoint index",
+			};
+		} else {
+			outpointSet.get(outpoint).add(outpoint.index);
 		}
 		try {
 			const sigToVerify = Uint8Array.from(Buffer.from(input.sig, "hex"));
