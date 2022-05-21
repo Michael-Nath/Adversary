@@ -168,11 +168,19 @@ export async function validateTransaction(
 	const outputs: [TransactionOutput] = transaction["outputs"];
 	let inputValues = 0;
 	let outputValues = 0;
+	let outpointSet: Set<string> = new Set();
 	for (let i = 0; i < inputs.length; i++) {
 		const input = inputs[i];
 		const outpoint: Outpoint = input.outpoint;
 		const response = await outpointExists(outpoint);
-
+		if (outpointSet.has(outpoint.txid)) {
+			return {
+				valid: false,
+				msg: "Error: multiple inputs cannot spend from same outpoint",
+			};
+		} else {
+			outpointSet.add(outpoint.txid);
+		}
 		if (!response["exists"]) {
 			return { valid: false, msg: "Error: outpoint does not exist." };
 		}
