@@ -179,10 +179,10 @@ async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 				currentHash = createObjectID(potentialNewTip.block);
 				while (currentHash !== GENESIS_HASH) {
 					const currentBlock = await db.BLOCKS.get(currentHash) as Types.Block;
-					removeBlockFromMempool(currentBlock);
+					await removeBlockFromMempool(currentBlock);
 					currentHash = currentBlock.previd;
 				}
-				filterInvalidMempoolTransactions();
+				await filterInvalidMempoolTransactions();
 			}
 			globalThis.chainTip = potentialNewTip;
 		}

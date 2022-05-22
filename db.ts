@@ -32,17 +32,17 @@ export function updateDBWithPeers(peers: Set<string> | Array<string>) {
 		});
 	})();
 }
-export function updateDBWithObject(obj: Block | Transaction) {
-	const hashOfObject = createObjectID(obj);
-	(async () => {
-		if (obj.type == "block") {
-			await BLOCKS.put(hashOfObject, obj);
-		} else {
-			await TRANSACTIONS.put(hashOfObject, obj);
-		}
-		globalThis.emitter.emit(hashOfObject);
-	})();
-} 
+// export function updateDBWithObject(obj: Block | Transaction) {
+// 	const hashOfObject = createObjectID(obj);
+// 	(async () => {
+// 		if (obj.type == "block") {
+// 			await BLOCKS.put(hashOfObject, obj);
+// 		} else {
+// 			await TRANSACTIONS.put(hashOfObject, obj);
+// 		}
+// 		globalThis.emitter.emit(hashOfObject);
+// 	})();
+// } 
 
 export async function updateDBWithObjectWithPromise(
 	obj: Block | Transaction
@@ -53,6 +53,7 @@ export async function updateDBWithObjectWithPromise(
 	} else {
 		await TRANSACTIONS.put(hashOfObject, obj);
 	}
+	globalThis.emitter.emit(hashOfObject);
 }
 
 export async function doesHashExist(hash: string) {

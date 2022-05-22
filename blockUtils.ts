@@ -118,6 +118,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 function parentBlockCallback(previd: string): Promise<string> {
 	return new Promise((resolve) => {
 		globalThis.emitter.on(previd, () => {
+			console.log("PARENT FOUND - PROMISED RESOLVED");
 			resolve("Parent found");
 		});
 		setTimeout(() => {
@@ -171,7 +172,7 @@ export async function validateBlock(
 				msg: "timestamp of created field must be later than that of its parent",
 			};
 		}
-		if (block["created"] > (Date.now() / 1)) {
+		if (block["created"] > (Date.now() / 1000)) {
 			return {
 				valid: false,
 				msg: "timestamp of block must be before the current time",

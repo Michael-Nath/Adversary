@@ -168,7 +168,7 @@ export async function validateTransaction(
 	const outputs: [TransactionOutput] = transaction["outputs"];
 	let inputValues = 0;
 	let outputValues = 0;
-	let outpointSet: Map<Outpoint, Set<Number>> = new Map();
+	let outpointMap = new Map<string, boolean>();
 	for (let i = 0; i < inputs.length; i++) {
 		const input = inputs[i];
 		const outpoint: Outpoint = input.outpoint;
@@ -185,17 +185,14 @@ export async function validateTransaction(
 				msg: "Error: index provided not does not corresponding to any output of outpoint's transaction body.",
 			};
 		}
-		if (outpointSet.get(outpoint) == undefined) {
-			outpointSet.set(outpoint, new Set());
-		}
-		let indicesUsed = outpointSet.get(outpoint);
-		if (indicesUsed.has(outpoint.index)) {
+		const outpointString = JSON.stringify(outpoint);
+		if (outpointMap.get(outpointString) != undefined) {
 			return {
 				valid: false,
-				msg: "Error: multiple inputs cannot spend from same outpoint index",
+				msg: "Error: multiple inputs cannot spend from same outpoint.",
 			};
 		} else {
-			outpointSet.get(outpoint).add(outpoint.index);
+			outpointMap.set(outpointString, true);
 		}
 		try {
 			const sigToVerify = Uint8Array.from(Buffer.from(input.sig, "hex"));
