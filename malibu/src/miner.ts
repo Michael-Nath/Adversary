@@ -68,6 +68,8 @@ export class Miner {
 			if (this.workingBlock.hasPoW()) {
 				// broadcast mined block
 				// network.broadcast(this.workingBlock.toNetworkObject());
+				console.log(this.workingBlock);
+				console.log(this.workingBlock.blockid);
 				logger.info("BLOCK HAS BEEN MINED!");
 				break;
 			} else {
@@ -81,5 +83,7 @@ export class Miner {
 	}
 }
 
-const miner = new Miner();
-miner.mine();
+// const miner = new Miner();
+// miner.mine();
+
+export const miner = new Miner();
