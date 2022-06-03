@@ -1,3 +1,4 @@
+import { parentPort } from "worker_threads";
 import { Block, TARGET } from "./block";
 import { chainManager } from "./chain";
 import { logger } from "./logger";
@@ -55,7 +56,7 @@ export class Miner {
 		this.workingTxIds = mempool.getTxIds();
 	}
 
-	async mine() {
+	mine() {
 		// miner indefinitely mines
 		while (true) {
 			let previousTxIds = this.workingTxIds;
@@ -68,9 +69,8 @@ export class Miner {
 			if (this.workingBlock.hasPoW()) {
 				// broadcast mined block
 				// network.broadcast(this.workingBlock.toNetworkObject());
-				console.log(this.workingBlock);
-				console.log(this.workingBlock.blockid);
 				logger.info("BLOCK HAS BEEN MINED!");
+				parentPort?.postMessage("done");
 				break;
 			} else {
 				// increment nonce by 1
@@ -78,6 +78,7 @@ export class Miner {
 				nonce_value += BigInt("1");
 				this.workingBlock["nonce"] = bnToHex(nonce_value);
 				// logger.info(this.workingBlock["nonce"]);
+				// parentPort?.postMessage(this.workingBlock["nonce"]);
 			}
 		}
 	}

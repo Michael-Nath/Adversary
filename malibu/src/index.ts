@@ -1,14 +1,14 @@
 import { logger } from "./logger";
-import { network } from "./network";
-import { chainManager } from "./chain";
-import { mempool } from "./mempool";
+// import { network } from "./network";
+// import { chainManager } from "./chain";
+// import { mempool } from "./mempool";
 import { miner } from "./miner";
 
 const worker = require("worker_threads");
 const BIND_PORT = 18018;
 const BIND_IP = "0.0.0.0";
 
-async function main() {
+function main() {
 	if (worker.isMainThread) {
 		logger.info(`Malibu - A Marabu node`);
 		logger.info(`Dionysis Zindros <dionyziz@stanford.edu>`);
@@ -16,6 +16,9 @@ async function main() {
 		worker_bee.on("error", (error: Error) => {
 			console.log("Error");
 			console.log(error);
+		});
+		worker_bee.on("message", (message: string) => {
+			console.log("Message", message);
 		});
 
 		// await chainManager.init();

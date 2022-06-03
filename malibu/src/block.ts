@@ -14,6 +14,7 @@ import { logger } from "./logger";
 import { Transaction } from "./transaction";
 import { chainManager } from "./chain";
 import { Deferred } from "./promise";
+import { parentPort } from "worker_threads";
 
 export const TARGET =
 	"00000002af000000000000000000000000000000000000000000000000000000";
@@ -44,11 +45,14 @@ export class Block {
 	created: number;
 	miner: string | undefined;
 	note: string | undefined;
-	blockid: string;
 	fees: number | undefined;
 	stateAfter: UTXOSet | undefined;
 	height: number | undefined;
 	valid: boolean = false;
+
+	get blockid(): string {
+		return hash(canonicalize(this.toNetworkObject()));
+	}
 
 	public static async makeGenesis(): Promise<Block> {
 		const genesis = await Block.fromNetworkObject(GENESIS);
@@ -97,7 +101,6 @@ export class Block {
 		this.created = created;
 		this.miner = miner;
 		this.note = note;
-		this.blockid = hash(canonicalize(this.toNetworkObject()));
 	}
 	async getCoinbase(): Promise<Transaction> {
 		if (this.txids.length === 0) {
@@ -135,6 +138,7 @@ export class Block {
 		return netObj;
 	}
 	hasPoW(): boolean {
+		// parentPort?.postMessage(this.blockid);
 		return BigInt(`0x${this.blockid}`) <= BigInt(`0x${TARGET}`);
 	}
 	isGenesis(): boolean {
