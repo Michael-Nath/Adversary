@@ -35,17 +35,18 @@ export class Miner {
 		const longestChainTip: Block | null = chainManager.longestChainTip;
 		let previd: string | null = "";
 		if (longestChainTip == null) {
-			previd = null;
+		//	previd = null;
+		previd = "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e";
 		} else {
 			previd = longestChainTip.blockid;
 		}
-
+		const currentUNIXtimestamp = Math.floor(new Date().getTime() / 1000);
 		const initial = new Block(
 			previd, // previd
 			this.workingTxIds, // txids
 			getRandomHex(), // nonce
 			TARGET, // T
-			Date.now() / 1000, // created
+			currentUNIXtimestamp, // created
 			"Michael Nath & Kenan Hasanaliyev", // miner
 			"This is NOT adversarial." // note
 		);
@@ -70,8 +71,8 @@ export class Miner {
 				// broadcast mined block
 				// network.broadcast(this.workingBlock.toNetworkObject());
 				logger.info("BLOCK HAS BEEN MINED!");
-				parentPort?.postMessage("done");
-				break;
+				parentPort?.postMessage(this.workingBlock);
+				// break;
 			} else {
 				// increment nonce by 1
 				let nonce_value = BigInt(`0x${this.workingBlock.nonce}`);
@@ -81,6 +82,7 @@ export class Miner {
 				// parentPort?.postMessage(this.workingBlock["nonce"]);
 			}
 		}
+		console.log("TESTING LMFAO");
 	}
 }
 

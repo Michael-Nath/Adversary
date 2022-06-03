@@ -5,7 +5,8 @@ import isValidHostname from 'is-valid-hostname'
 const BOOTSTRAP_PEERS: string[] = [
   '149.28.220.241:18018',
   '149.28.204.235:18018',
-  '139.162.130.195:18018'
+  '139.162.130.195:18018',
+  '127.0.0.1:18018'
 ]
 
 class PeerManager {
