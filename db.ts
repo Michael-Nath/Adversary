@@ -56,6 +56,17 @@ export async function updateDBWithObjectWithPromise(
 	globalThis.emitter.emit(hashOfObject);
 }
 
+export async function updateDBWithObjectWithPromiseNoEmit(
+	obj: Block | Transaction
+): Promise<void> {
+	const hashOfObject = createObjectID(obj);
+	if (obj.type == "block") {
+		await BLOCKS.put(hashOfObject, obj);
+	} else {
+		await TRANSACTIONS.put(hashOfObject, obj);
+	}
+}
+
 export async function doesHashExist(hash: string) {
 	try {
 		const transaction = await TRANSACTIONS.get(hash);

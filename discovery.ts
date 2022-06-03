@@ -153,7 +153,8 @@ async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 		return;
 	}
 	gossipObject(block);
-	await db.updateDBWithObjectWithPromise(block);
+	// KEEP HERE BUT REMOVE EMITTER UNTIL AFTER THE IF STATEMENT
+	await db.updateDBWithObjectWithPromiseNoEmit(block);
 
 	if(globalThis.chainTip) {
 		if(potentialNewTip.height > globalThis.chainTip.height) {
@@ -189,7 +190,12 @@ async function validateUTXOAndGossipBlock(socket: Net.Socket, block) {
 	}else {
 		globalThis.chainTip = potentialNewTip;
 	}
+	globalThis.emitter.emit(createObjectID(block));
 } 
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 export async function addObject(socket: Net.Socket, response: Object) {
 	const obj = response["data"]["object"];
@@ -245,7 +251,11 @@ export async function addObject(socket: Net.Socket, response: Object) {
 						type: "getobject",
 						objectid: txid,
 					};
+					console.log("GET OBJECT MSG:");
+					console.log(getObjectMessage);
 					socket.write(canonicalize(getObjectMessage) + "\n");
+					// await(sleep(1000));
+					console.log("GET OBJECT POST SOCKET WRITE");
 				}
 				setTimeout(async () => {
 					if (globalThis.pendingBlocks.has(objectHash) && globalThis.pendingBlocks.get(objectHash).txids.size != 0) {
