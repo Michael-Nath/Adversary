@@ -1,7 +1,13 @@
+/**
+ * @author Michael D. Nath, Kenan Hasanaliyev
+ * @email mnath@stanford.edu, kenanhas@stanford.edu
+ * @file db.ts
+ * @desc db.ts contains the full-node database that stores transactions, blocks, chains, and peers. Implemented with a local levelDB. Anything else would be centralized!
+ */
+
 import { createObjectID } from "./blockUtils";
 import { Block, Outpoint, Transaction } from "types";
 import { GENESIS_BLOCK } from "./constants";
-import { EventEmitter } from "stream";
 const Level = require("level");
 const sub = require("subleveldown");
 
@@ -22,6 +28,7 @@ export async function resetStore() {
 }
 
 export function updateDBWithPeers(peers: Set<string> | Array<string>) {
+	// Creating a batch operation to make adding list of peers to db faster
 	let ops = [];
 	peers.forEach((newPeer) => {
 		ops.push({ type: "put", key: newPeer, value: [] });
@@ -32,18 +39,6 @@ export function updateDBWithPeers(peers: Set<string> | Array<string>) {
 		});
 	})();
 }
-// export function updateDBWithObject(obj: Block | Transaction) {
-// 	const hashOfObject = createObjectID(obj);
-// 	(async () => {
-// 		if (obj.type == "block") {
-// 			await BLOCKS.put(hashOfObject, obj);
-// 		} else {
-// 			await TRANSACTIONS.put(hashOfObject, obj);
-// 		}
-// 		globalThis.emitter.emit(hashOfObject);
-// 	})();
-// } 
-
 export async function updateDBWithObjectWithPromise(
 	obj: Block | Transaction
 ): Promise<void> {
@@ -53,6 +48,7 @@ export async function updateDBWithObjectWithPromise(
 	} else {
 		await TRANSACTIONS.put(hashOfObject, obj);
 	}
+	// Let listeners (such as node waiting details of a block's parents to come in) know that object has been added to DB
 	globalThis.emitter.emit(hashOfObject);
 }
 
@@ -69,22 +65,22 @@ export async function doesHashExist(hash: string) {
 }
 
 export async function printDB() {
-	// console.log("PRINTING EVERYTHING IN TRANSACTIONS TABLE");
-	// for await (const [key, value] of TRANSACTIONS.iterator()) {
-	// 	console.log(key, value);
-	// }
-	// console.log("PRINTING EVERYTHING IN PEERS TABLE");
-	// for await (const [key, value] of PEERS.iterator()) {
-	// 	console.log(key, value);
-	// }
-	// console.log("PRINTING EVERYTHING IN BLOCK TABLE");
-	// for await (const [key, value] of BLOCKS.iterator()) {
-	// 	console.log(key, value);
-	// }
-	// console.log("PRINTING EVERYTHING IN BLOCKUTXOS TABLE");
-	// for await (const [key, value] of BLOCKUTXOS.iterator()) {
-	// 	console.log(key, value);
-	// }
+	console.log("PRINTING EVERYTHING IN TRANSACTIONS TABLE");
+	for await (const [key, value] of TRANSACTIONS.iterator()) {
+		console.log(key, value);
+	}
+	console.log("PRINTING EVERYTHING IN PEERS TABLE");
+	for await (const [key, value] of PEERS.iterator()) {
+		console.log(key, value);
+	}
+	console.log("PRINTING EVERYTHING IN BLOCK TABLE");
+	for await (const [key, value] of BLOCKS.iterator()) {
+		console.log(key, value);
+	}
+	console.log("PRINTING EVERYTHING IN BLOCKUTXOS TABLE");
+	for await (const [key, value] of BLOCKUTXOS.iterator()) {
+		console.log(key, value);
+	}
 	console.log("PRINTING EVERYTHING IN HEIGHTS TABLE");
 	for await (const [key, value] of HEIGHTS.iterator()) {
 		console.log(key, value);

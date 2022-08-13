@@ -1,9 +1,19 @@
+/**
+ * @author Michael D. Nath, Kenan Hasanaliyev
+ * @email mnath@stanford.edu, kenanhas@stanford.edu
+ * @file constants.ts
+ * @desc constants.ts contains relevant constants needed for full node functioning.
+ */
+
 import type { HelloMessage, Block } from "types";
+const canonicalize = require("canonicalize");
+
+export const TIMEOUT_IN_MILLIS = 5000;
+
 export const HELLO_ERROR = "";
 export const TYPE_ERROR = "Unsupported message type received\n";
 export const FORMAT_ERROR = "Invalid message format\n";
 export const WELCOME_ERROR = "Must send hello message first.";
-const canonicalize = require("canonicalize");
 
 export const HELLO_MESSAGE: HelloMessage = canonicalize({
 	type: "hello",
@@ -25,14 +35,7 @@ export const ALLOWABLE_TYPES: Set<string> = new Set([
 	"getchaintip",
 	"chaintip",
 	"getmempool",
-	"mempool"
-]);
-
-export var BOOTSTRAPPING_PEERS: Set<string> = new Set([
-	"149.28.204.235",
-	"149.28.220.241",
-	"139.162.130.195",
-	"localhost",
+	"mempool",
 ]);
 
 export const GENESIS_BLOCK: Block = {

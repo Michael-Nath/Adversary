@@ -1,22 +1,27 @@
+/**
+ * @author Michael D. Nath, Kenan Hasanaliyev
+ * @email mnath@stanford.edu, kenanhas@stanford.edu
+ * @file blockUtils.ts
+ * @desc blockUtils.ts contains all logic pertinent to block validation.
+ */
 import {
 	Transaction,
 	Block,
 	VerificationResponse,
 	TransactionRequest,
 	Outpoint,
-	ValidationMessage,
 	HashObjectMessage,
 } from "./types";
-import * as sha256 from "fast-sha256";
 import {
 	isCoinbase,
 	isHex,
 	validateCoinbase,
 	validateTransaction,
 } from "./transactionUtils";
+import * as sha256 from "fast-sha256";
 import * as db from "./db";
+import * as CONSTANTS from "./constants";
 import { applyBlockToUTXO } from "./utxoUtils";
-import { utils } from "@noble/ed25519";
 const T_VALUE =
 	"00000002af000000000000000000000000000000000000000000000000000000";
 const BLOCK_REWARD = 50000000000000;
@@ -30,24 +35,31 @@ export function createObjectID(object: Block | Transaction): string {
 }
 
 export function validateBlockFormat(block: Object): VerificationResponse {
-	// block must have desired keys
+	// Block must have desired keys
 	const requiredKeys = ["txids", "nonce", "previd", "T", "created", "type"];
 	const optionalKeys = ["miner", "note"];
+	let missingAnyKeys = false;
+	let keysMissing: string[] = [];
 	for (let key of requiredKeys) {
 		if (block[key] === undefined) {
-			console.log("MISSING KEY IS");
-			console.log(key);
-			return { valid: false, msg: `not all required keys in block` };
+			missingAnyKeys = true;
+			keysMissing.push(key);
 		}
 	}
-
-	for (const [key, value] of Object.entries(block)) {
+	if (missingAnyKeys) {
+		return {
+			valid: false,
+			msg: `Not all required keys in block. Missing: ${keysMissing}`,
+		};
+	}
+	// Blocks must only contain keys either in requiredKeys or optionalKeys
+	for (const [key, _] of Object.entries(block)) {
 		if (!requiredKeys.includes(key) && !optionalKeys.includes(key)) {
 			return { valid: false, msg: `Unknown key: ${key}` };
 		}
 	}
 	const blockifiedBlock = block as Block;
-	// txids must be an array of strings
+	// Txids must be an array of strings
 	if (!Array.isArray(blockifiedBlock["txids"])) {
 		return { valid: false, msg: "txids must be an array" };
 	}
@@ -56,15 +68,15 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 			return { valid: false, msg: "txids must be an array of strings" };
 		}
 	}
-	// nonce must be hex string
+	// Nonce must be hex string
 	if (!isHex(blockifiedBlock["nonce"])) {
 		return { valid: false, msg: "nonce must be hex string" };
 	}
-	// previd must be hex string
+	// Previd must be hex string
 	if (!isHex(blockifiedBlock["previd"])) {
 		return { valid: false, msg: "previd must be hex string" };
 	}
-	// 'created' key must be non-negative integer seconds
+	// 'Created' key must be non-negative integer seconds
 	if (
 		typeof blockifiedBlock["created"] != "number" ||
 		blockifiedBlock["created"] < 0 ||
@@ -80,7 +92,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 		blockifiedBlock["miner"] != undefined &&
 		(typeof blockifiedBlock["miner"] != "string" ||
 			blockifiedBlock["miner"].length > 128 ||
-			!/^[\x00-\x7F]*$/.test(blockifiedBlock["miner"]))
+			!/^[\x00-\x7F]*$/.test(blockifiedBlock["miner"])) // regex used to test whether string is ascii
 	) {
 		return {
 			valid: false,
@@ -115,6 +127,7 @@ export function validateBlockFormat(block: Object): VerificationResponse {
 	return { valid: true };
 }
 
+// Node gives peer TIMEOUT_IN_MILLIS amount of time to provide a parent. Otherwise, parent does not exist in the eye of the node
 function parentBlockCallback(previd: string): Promise<string> {
 	return new Promise((resolve) => {
 		globalThis.emitter.on(previd, () => {
@@ -124,7 +137,7 @@ function parentBlockCallback(previd: string): Promise<string> {
 		setTimeout(() => {
 			globalThis.emitter.removeAllListeners(previd);
 			resolve("Parent not found");
-		}, 5000);
+		}, CONSTANTS.TIMEOUT_IN_MILLIS);
 	});
 }
 
@@ -147,7 +160,7 @@ export async function validateBlock(
 	let coinbaseOutputValue = 0;
 	let sumInputValues = 0;
 	let sumOutputValues = 0;
-	// check if parent block exists
+	// Check if parent block exists
 	const previd = block["previd"];
 	const existenceResponse = await db.doesHashExist(previd);
 	if (!existenceResponse.exists) {
@@ -172,13 +185,13 @@ export async function validateBlock(
 				msg: "timestamp of created field must be later than that of its parent",
 			};
 		}
-		if (block["created"] > (Date.now() / 1000)) {
+		if (block["created"] > Date.now() / 1000) {
 			return {
 				valid: false,
 				msg: "timestamp of block must be before the current time",
 			};
 		}
-		// validate each transaction in the block
+		// Validate each transaction in the block
 		const txids: [string] = block["txids"];
 		for (let index = 0; index < txids.length; index++) {
 			try {
@@ -248,7 +261,6 @@ export async function handleIncomingValidatedBlock(
 	}
 }
 
-// TODO: create function that takes a TransactionRequest object and sends a getpeers message asking for the missing transactions.
 export async function correspondingTransactionsExist(
 	txids: [string]
 ): Promise<TransactionRequest> {
@@ -265,19 +277,3 @@ export async function correspondingTransactionsExist(
 	}
 	return { missing: false, txids: missingTransactions };
 }
-
-const fakeBlock = {
-	nonce: "Monkey",
-	txids: ["MOnkeyyys", 2],
-};
-
-const genesis = {
-	nonce: "c5ee71be4ca85b160d352923a84f86f44b7fc4fe60002214bc1236ceedc5c615",
-	T: "00000002af000000000000000000000000000000000000000000000000000000",
-	created: 1649827795114,
-	miner: "svatsan",
-	note: "First block. Yayy, I have 50 bu now!!",
-	previd: "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e",
-	txids: ["1bb37b637d07100cd26fc063dfd4c39a7931cc88dae3417871219715a5e374af"],
-	type: "block",
-};

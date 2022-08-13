@@ -1,14 +1,11 @@
 /**
- * @author Michael D. Nath, Kenan Hasanaliyev, Gabriel Greenstein
- * @email mnath@stanford.edu, kenanhas@stanford.edu, gbg222@stanford.edu
- * @create date 2022-04-02
- * @modify date 2022-04-02
- * @desc [description]
+ * @author Michael D. Nath, Kenan Hasanaliyev
+ * @email mnath@stanford.edu, kenanhas@stanford.edu
+ * @file types.ts
+ * @desc types.ts outlines all interfaces/typedefs used for handshakes, blocks, transactions, function callbacks, etc.
  */
-// TODO:
-// Make data property of ValidationMessage work with JSON
 
-import { BlockList, Socket } from "net";
+import { Socket } from "net";
 
 export interface ValidationMessage {
 	valid: boolean;
@@ -68,7 +65,7 @@ export interface PendingBlock extends Object {
 export interface Block extends Object {
 	type: "block";
 	txids: string[];
-	created: number
+	created: number;
 	nonce: string;
 	previd: string;
 	miner?: string;
@@ -98,7 +95,7 @@ export interface ChainTip {
 
 export interface ChainTipMessage {
 	type: "chaintip";
-	blockid: string; 
+	blockid: string;
 }
 
 export type HashToObjectMap = Map<string, ApplicationObject>;

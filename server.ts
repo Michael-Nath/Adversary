@@ -1,17 +1,15 @@
 /**
- * @author Michael D. Nath, Kenan Hasanaliyev, Gabriel Greenstein
- * @email mnath@stanford.edu, kenanhas@stanford.edu, gbg222@stanford.edu
- * @create date 2022-04-02
- * @modify date 2022-04-02
- * @desc [description]
+ * @author Michael D. Nath, Kenan Hasanaliyev
+ * @email mnath@stanford.edu, kenanhas@stanford.edu
+ * @file server.ts
+ * @desc server.ts contains code to spin up a tcp server to listen to connections from other clients on the Marabu network.
  */
+
 import * as Net from "net";
 import * as Utils from "./utils";
 import * as CONSTANTS from "./constants";
-import * as types from "./types";
 import * as Discovery from "./discovery";
 import { nanoid } from "nanoid";
-const canonicalize = require("canonicalize"); // cononicalize(json) takes in a JSON and returns another JSON
 
 declare module "net" {
 	interface Socket {
@@ -20,7 +18,6 @@ declare module "net" {
 }
 
 export function startServer() {
-
 	// Use net.createServer() in your code. This is just for illustration purpose.
 	// Create a new TCP server.
 	const server: Net.Server = new Net.Server();
@@ -34,8 +31,7 @@ export function startServer() {
 		);
 	});
 
-	// When a client requests a connection with the server, the server creates a new
-	// socket dedicated to that client.
+	// When a client requests a connection with the server, the server creates a new socket dedicated to that client.
 	server.on("connection", function (socket) {
 		socket.id = nanoid();
 		globalThis.peerStatuses[socket.id] = { buffer: "" };
@@ -51,21 +47,25 @@ export function startServer() {
 			console.log(fullString);
 			console.log("-------------------");
 			const msgs = fullString.split("\n");
-			
+
 			// If no new line character, then add full string to the buffer
 			if (!fullString.includes("\n")) {
 				Utils.sanitizeString(socket, fullString, false);
 			} else {
 				for (let i = 0; i < msgs.length; i++) {
-					const msg = msgs[i]
+					const msg = msgs[i];
 					// String before first new line will complete the buffer into a complete message
 					if (i == 0) {
 						const completedMessage = Utils.sanitizeString(socket, msg, true);
-						Utils.routeMessage(completedMessage, socket, socket.address()["address"]);
-					}else if (i == msgs.length - 1) {
+						Utils.routeMessage(
+							completedMessage,
+							socket,
+							socket.address()["address"]
+						);
+					} else if (i == msgs.length - 1) {
 						// String after the last new line will go into the buffer
-						msg != "" && Utils.sanitizeString(socket, msg, false)
-					}else {
+						msg != "" && Utils.sanitizeString(socket, msg, false);
+					} else {
 						// Strings in between two newlines are complete and passed through directly
 						Utils.routeMessage(msg, socket, socket.address()["address"]);
 					}

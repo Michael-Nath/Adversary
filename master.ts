@@ -1,25 +1,19 @@
+/**
+ * @author Michael D. Nath, Kenan Hasanaliyev
+ * @email mnath@stanford.edu, kenanhas@stanford.edu
+ * @file master.ts
+ * @desc master.ts boots up client that connects to peers and server which handles incoming connections.
+ */
+
 import { startClient } from "./client";
 import { startServer } from "./server";
 import * as Utils from "./utils";
-import * as db from "./db";
-import * as Discovery from "./discovery";
-import * as Net from "net";
-import { Block, PendingBlock, ChainTip, Outpoint } from "./types";
-import { EventEmitter } from "stream";
-import { GENESIS_BLOCK } from "./constants"
 const canonicalize = require("canonicalize");
 
-globalThis.connections = Discovery.obtainBootstrappingPeers() as Set<string>;
-db.updateDBWithPeers(globalThis.connections);
-globalThis.peerStatuses = {};
-globalThis.sockets = new Set<Net.Socket>();
-globalThis.pendingBlocks = new Map<string, PendingBlock>();
-globalThis.emitter = new EventEmitter();
-globalThis.chainTip = { block: GENESIS_BLOCK, height: 0};
-globalThis.mempool = new Array<string>();
-globalThis.mempoolState = new Array<Outpoint>();
-// Utils.resetStore()
-// Utils.initializeStore()
+Utils.initializeGlobals();
 startServer();
-const getChainTipMessage = canonicalize({ type: "getchaintip" }) + "\n" + canonicalize({ type: "getmempool" });
+const getChainTipMessage =
+	canonicalize({ type: "getchaintip" }) +
+	"\n" +
+	canonicalize({ type: "getmempool" });
 startClient(getChainTipMessage);

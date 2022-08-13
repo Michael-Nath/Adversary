@@ -1,3 +1,9 @@
+/**
+ * @author Michael D. Nath, Kenan Hasanaliyev
+ * @email mnath@stanford.edu, kenanhas@stanford.edu
+ * @file transactionUtils.ts
+ * @desc transactionUtils.ts contains logic for validating transactions (correct format, signature, law of conservation, etc)
+ */
 import {
 	Transaction,
 	VerificationResponse,
@@ -5,17 +11,15 @@ import {
 	TransactionOutput,
 	Outpoint,
 } from "types";
-import { DB, TRANSACTIONS } from "./db";
+import { TRANSACTIONS } from "./db";
 import * as ed from "@noble/ed25519";
-import { createObjectID } from "blockUtils";
 
 export async function outpointExists(
 	outpoint: Outpoint
 ): Promise<VerificationResponse> {
 	try {
 		const transaction = await TRANSACTIONS.get(outpoint.txid);
-		console.log("OUTPOINT");
-		console.log(transaction);
+		console.log(`OUTPOINT: ${transaction}`);
 		return { exists: true, obj: transaction };
 	} catch {
 		return { exists: false };
@@ -61,14 +65,15 @@ export function validateCoinbase(
 	}
 	return { valid: true, data: { value: coinbase["outputs"][0]["value"] } };
 }
+
 export function getUnsignedTransactionFrom(
 	transaction: Transaction
 ): Transaction {
-	// console.log("TRYING TO UNSIGN TRANSACTION:");
-	// console.log(transaction);
+	console.log(`TRYING TO UNSIGN TRANSACTION: ${transaction}`);
 	const unsignedTransaction = JSON.parse(
 		JSON.stringify(transaction)
 	) as Transaction;
+	// Only replace signatures with null if transaction has inputs
 	unsignedTransaction["inputs"] &&
 		unsignedTransaction["inputs"].forEach((input) => {
 			input.sig = null;
@@ -78,12 +83,9 @@ export function getUnsignedTransactionFrom(
 
 export function isHex(h): boolean {
 	try {
-		if ((h as string).match(/^[0-9a-f]+$/)) {
-			return true;
-		} else {
-			return false;
-		}
+		return ((h as string).match(/^[0-9a-f]+$/) != null) ? true : false;
 	} catch (err) {
+		console.log(err);
 		return false;
 	}
 }
@@ -91,11 +93,9 @@ export function isHex(h): boolean {
 function transactionIsFormattedCorrectly(
 	transaction: Transaction
 ): VerificationResponse {
-	// FOR PSET 2: Coinbase Transactions are always valid
 	if (isCoinbase(transaction)) {
 		return { valid: true };
 	}
-
 	// input and output key must exist in transaction body
 	if (!("inputs" in transaction) || !("outputs" in transaction)) {
 		return {
@@ -106,8 +106,7 @@ function transactionIsFormattedCorrectly(
 	// each input must contain keys "outpoint" and "sig"
 	// each input must have a signature that is hexadecimal string
 	for (let input of transaction["inputs"]) {
-		// console.log("INPUT:");
-		// console.log(input);
+		console.log(`INPUT: ${input}`);
 		if (!input.outpoint) {
 			return {
 				valid: false,
@@ -233,23 +232,3 @@ export async function validateTransaction(
 	}
 	return { valid: true, data: { inputValues, outputValues } };
 }
-
-// export function createTransactionsFrom(txids: [string]): [Transaction] {
-// 	(async () => {
-// 		const privateKey = ed.utils.randomPrivateKey();
-// 		const publicKey = await ed.getPublicKey(privateKey);
-// 		console.log(Buffer.from(publicKey).toString("hex"));
-// 		const coinbase = {
-// 			type: "transaction",
-// 			height: 128,
-// 			outputs: [
-// 				{
-// 					pubkey:
-// 						"077a2683d776a71139fd4db4d00c16703ba0753fc8bdc4bd6fc56614e659cde3",
-// 					value: 50000000000,
-// 				},
-// 			],
-// 		};
-// 	})();
-// 	return;
-// }

@@ -1,16 +1,22 @@
 /**
  * @author Michael D. Nath, Kenan Hasanaliyev
  * @email mnath@stanford.edu, kenanhas@stanford.edu
- * @create date 2022-04-02
- * @modify date 2022-04-02
- * @desc [description]
+ * @file utils.ts
+ * @desc utils.ts contains helper functions for message and connection handling
  */
+
 import * as Types from "./types";
 import type { Socket } from "net";
 import * as Discovery from "./discovery";
-import * as Constants from "./constants"
+import * as CONSTANTS from "./constants";
+import { EventEmitter } from "stream";
+import * as db from "./db";
+import { GENESIS_BLOCK } from "./constants";
+import {PendingBlock, Outpoint } from "./types";
+
 const canonicalize = require("canonicalize");
 
+//  A peer interested in connecting with us MUST send a hello message as defined by the Marabu protocol
 export function isValidFirstMessage(response: {}): boolean {
 	if (
 		response["data"]["type"] == "hello" &&
@@ -44,16 +50,16 @@ export function validateMessage(
 	try {
 		const parsedMessage: JSON = JSON.parse(message);
 		json["data"] = parsedMessage;
-		if (!Constants.ALLOWABLE_TYPES.has(parsedMessage["type"])) {
-			json["error"] = { type: "error", error: Constants.TYPE_ERROR };
+		if (!CONSTANTS.ALLOWABLE_TYPES.has(parsedMessage["type"])) {
+			json["error"] = { type: "error", error: CONSTANTS.TYPE_ERROR };
 			return json;
 		}
 		if (parsedMessage["type"] != "hello" && !doesConnectionExist(socket)) {
-			json["error"] = { type: "error", error: Constants.WELCOME_ERROR };
+			json["error"] = { type: "error", error: CONSTANTS.WELCOME_ERROR };
 			return json;
 		}
 	} catch (err) {
-		json["error"] = { type: "error", error: Constants.FORMAT_ERROR };
+		json["error"] = { type: "error", error: CONSTANTS.FORMAT_ERROR };
 		console.error(err);
 		return json;
 	}
@@ -61,6 +67,17 @@ export function validateMessage(
 	return json;
 }
 
+export function initializeGlobals() {
+	globalThis.connections = Discovery.obtainBootstrappingPeers() as Set<string>;
+	db.updateDBWithPeers(globalThis.connections);
+	globalThis.peerStatuses = {};
+	globalThis.sockets = new Set<Socket>();
+	globalThis.pendingBlocks = new Map<string, PendingBlock>();
+	globalThis.emitter = new EventEmitter();
+	globalThis.chainTip = { block: GENESIS_BLOCK, height: 0 };
+	globalThis.mempool = new Array<string>();
+	globalThis.mempoolState = new Array<Outpoint>();
+}
 
 export function routeMessage(msg: string, socket: Socket, peer: string) {
 	const response = validateMessage(socket, msg);
@@ -109,6 +126,9 @@ export function routeMessage(msg: string, socket: Socket, peer: string) {
 			break;
 	}
 }
+
+// Sometimes peers send the node incomplete messages (separate chunks sent over a time interval), 
+// so sanitizeString maintains a buffer until all chunks have been received.
 export function sanitizeString(
 	socket: Socket,
 	str: string,
@@ -124,4 +144,3 @@ export function sanitizeString(
 	}
 	return "";
 }
-
